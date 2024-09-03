@@ -22,6 +22,8 @@ func RegisterRoutes() *gin.Engine {
 		AllowHeaders: []string{"Content-type", "Authorization"},
 		//允许带cookie之类的用户认证信息
 		AllowCredentials: true,
+		//允许包含的请求
+		ExposeHeaders: []string{"x-jwt-token"},
 		//使用方法校验忽略掉AllowOrigins
 		AllowOriginFunc: func(origin string) bool {
 			if strings.Contains(origin, "localhost") {
@@ -44,7 +46,7 @@ func RegisterRoutes() *gin.Engine {
 	//在ctx中创建session
 	r.Use(sessions.Sessions("mysession", store))
 	//校验
-	r.Use(middleware.NewLoginMiddlewareBuilder().IgnorePaths("/users/signup").
+	r.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup").
 		IgnorePaths("/users/login").Build())
 	return r
 }

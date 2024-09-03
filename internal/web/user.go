@@ -1,11 +1,13 @@
 package web
 
 import (
+	"fmt"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/service"
 	"github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 )
 
@@ -73,8 +75,39 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	}
 	ctx.String(http.StatusOK, "注册成功")
 }
-
 func (u *UserHandler) Login(ctx *gin.Context) {
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	_, err := u.svc.Login(ctx, req.Email, req.Password)
+	if err != nil {
+		if err == service.ErrInvalidUserOrPassword {
+			ctx.String(http.StatusOK, "用户不存在或密码不对")
+		} else {
+			ctx.String(http.StatusOK, "系统异常")
+		}
+		return
+	}
+	//用jwt设置登录状态
+	//创建token
+	token := jwt.New(jwt.SigningMethodHS256)
+	tokenStr, err := token.SignedString([]byte("secret"))
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "系统错误")
+		return
+	}
+	//将token放到header中
+	ctx.Header("x-jwt-token", tokenStr)
+	fmt.Println(tokenStr)
+	ctx.String(http.StatusOK, "登录成功")
+}
+
+func (u *UserHandler) Login2(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`

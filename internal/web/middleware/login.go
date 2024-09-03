@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// LoginMiddlewareBuilder session登录校验
 type LoginMiddlewareBuilder struct {
 	paths []string
 }
@@ -54,6 +55,7 @@ func (l *LoginMiddlewareBuilder) Build() gin.HandlerFunc {
 			sess.Save()
 			return
 		}
+		//如果距离上次更新大于10s，就更新maxAge
 		updateTimeVal, _ := updateTime.(time.Time)
 		if now.Sub(updateTimeVal) > time.Second*10 {
 			sess.Set("update_time", now)
