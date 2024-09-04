@@ -49,5 +49,5 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 	if err != nil {
 		return domain.User{}, ErrInvalidUserOrPassword
 	}
-	return domain.User{}, err
+	return u, err
 }

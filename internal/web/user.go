@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/service"
+	"geektime/webook/internal/web/middleware"
 	"github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
+	"time"
 )
 
 // UserHandler 定义与用户相关的路由
@@ -84,7 +86,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	if err := ctx.Bind(&req); err != nil {
 		return
 	}
-	_, err := u.svc.Login(ctx, req.Email, req.Password)
+	user, err := u.svc.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		if err == service.ErrInvalidUserOrPassword {
 			ctx.String(http.StatusOK, "用户不存在或密码不对")
@@ -95,7 +97,14 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 	//用jwt设置登录状态
 	//创建token
-	token := jwt.New(jwt.SigningMethodHS256)
+	claims := middleware.UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			//设置过期时间
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+		},
+		Uid: user.Id,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte("secret"))
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "系统错误")
@@ -103,7 +112,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 	//将token放到header中
 	ctx.Header("x-jwt-token", tokenStr)
-	fmt.Println(tokenStr)
+	//fmt.Println(tokenStr)
 	ctx.String(http.StatusOK, "登录成功")
 }
 
@@ -152,4 +161,20 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 }
 
 func (u *UserHandler) Profile(ctx *gin.Context) {
+	c, ok := ctx.Get("claims")
+	//一定获取到claims
+	if !ok {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	//类型断言
+	claims, ok := c.(*middleware.UserClaims)
+	if !ok {
+		ctx.String(http.StatusOK, "系统错误")
+		return
+	}
+	fmt.Println(claims.Uid)
+}
+
+func (u *UserHandler) Profile2(ctx *gin.Context) {
 }

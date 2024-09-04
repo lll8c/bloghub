@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -35,7 +36,7 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			}
 		}
 		//Bearer xxx.xxx.xxx
-		tokenHeader := ctx.GetHeader("authorization")
+		tokenHeader := ctx.GetHeader("Authorization")
 		if tokenHeader == "" {
 			//没登录
 			ctx.AbortWithStatus(http.StatusUnauthorized)
@@ -48,7 +49,9 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 		tokenStr := segs[1]
-		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		//解析时传指针
+		claims := &UserClaims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte("secret"), nil
 		})
 		if err != nil {
@@ -57,10 +60,29 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			return
 		}
 		//token无效
-		if token == nil || !token.Valid {
+		if token == nil || !token.Valid || claims.Uid == 0 {
 			//没登录
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		//每10s刷新一次，token过期时间
+		now := time.Now()
+		if claims.ExpiresAt.Sub(now) < time.Second*50 {
+			claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute))
+			tokenStr, err = token.SignedString([]byte("secret"))
+			if err != nil {
+				log.Println("jwt 续约失败")
+				return
+			}
+			ctx.Header("x-jwt-token", tokenStr)
+		}
+
+		ctx.Set("claims", claims)
 	}
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	//声明你自己的要放进去token里面的数据
+	Uid int64
 }
