@@ -5,19 +5,25 @@ import (
 	"geektime/webook/internal/repository/dao"
 	"geektime/webook/internal/service"
 	"geektime/webook/internal/web"
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"net/http"
 )
 
 func main() {
-	r := web.RegisterRoutes()
-	db := initDB()
-	u := initUser(db)
+	//r := web.RegisterRoutes()
+	//db := initDB()
+	//u := initUser(db)
 
-	r.POST("users/signup", u.SignUp)
-	r.POST("users/login", u.Login)
-	r.POST("users/edit", u.Edit)
-	r.POST("users/profile", u.Profile)
+	//r.POST("users/signup", u.SignUp)
+	//r.POST("users/login", u.Login)
+	//r.POST("users/edit", u.Edit)
+	//r.POST("users/profile", u.Profile)
+	r := gin.Default()
+	r.GET("/hello", func(c *gin.Context) {
+		c.String(http.StatusOK, "hello")
+	})
 	r.Run(":8080")
 }
 

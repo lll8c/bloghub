@@ -51,6 +51,7 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 		tokenStr := segs[1]
 		//解析时传指针
 		claims := &UserClaims{}
+		//解析token
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte("secret"), nil
 		})
@@ -65,6 +66,12 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		//增强登录安全，校验UserAgent
+		if claims.UserAgent != ctx.Request.UserAgent() {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		//每10s刷新一次，token过期时间
 		now := time.Now()
 		if claims.ExpiresAt.Sub(now) < time.Second*50 {
@@ -84,5 +91,6 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 type UserClaims struct {
 	jwt.RegisteredClaims
 	//声明你自己的要放进去token里面的数据
-	Uid int64
+	Uid       int64
+	UserAgent string
 }

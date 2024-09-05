@@ -102,7 +102,8 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 			//设置过期时间
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
-		Uid: user.Id,
+		UserAgent: ctx.Request.UserAgent(),
+		Uid:       user.Id,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, err := token.SignedString([]byte("secret"))
