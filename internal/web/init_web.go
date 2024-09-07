@@ -3,8 +3,6 @@ package web
 import (
 	"geektime/webook/internal/web/middleware"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
 	"strings"
 	"time"
@@ -39,14 +37,14 @@ func RegisterRoutes() *gin.Engine {
 	//创建基于 cookie 的存储引擎，secret 参数是用于加密的密钥
 	//store := cookie.NewStore([]byte("secret"))
 	//创建基于 redis 的存储引擎
-	store, err := redis.NewStore(16, "tcp", "localhost:6379", "", []byte("secret"))
+	/*store, err := redis.NewStore(16, "tcp", "localhost:6379", "", []byte("secret"))
 	if err != nil {
 		panic(err)
 	}
 	//在ctx中创建session
-	r.Use(sessions.Sessions("mysession", store))
+	r.Use(sessions.Sessions("mysession", store))*/
 	//校验
 	r.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup").
-		IgnorePaths("/users/login").Build())
+		IgnorePaths("/users/login").IgnorePaths("/hello").Build())
 	return r
 }

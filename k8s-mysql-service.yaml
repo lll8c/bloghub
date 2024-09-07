@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webook-mysql
+spec:
+  #筛选 app:webook-mysql的pod
+  selector:
+    app: webook-mysql
+  ports:
+    #避免冲突，使用11309端口
+    - port: 11309
+      name: mysql
+      protocol: TCP
+      targetPort: 3306
+      #nodePort: 30002
+  type: LoadBalancer

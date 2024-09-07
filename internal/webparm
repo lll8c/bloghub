@@ -4,3 +4,8 @@
   "password": "hello@123",
   "confirm_password": "hello@123"
 }
+{
+  "email": "123@qq.com",
+  "password": "hello@123",
+  "confirm_password": "hello@123"
+}

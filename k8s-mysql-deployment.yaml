@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webook-mysql
+spec:
+  replicas: 1
+  #筛选
+  selector:
+    matchLabels:
+      app: webook-mysql
+  #模板
+  template:
+    metadata:
+      name: webook-mysql
+      labels:
+        app: webook-mysql
+    spec:
+      containers:
+        - name: webook-mysql
+          image: hub.atomgit.com/library/mysql:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root
+          volumeMounts:
+#            这边要对应到mysql的数据存储的位置
+            - mountPath: /var/lib/mysql
+              #指定使用的volume
+              name: mysql-storage
+          ports:
+            - containerPort: 3306
+      restartPolicy: Always
+      #整个pod拥有的volume
+      volumes:
+        #持久化卷可以有多个
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: webook-mysql-claim
+#        - name: hadoop-storage
+#          persistentVolumeClaim:
+#            claimName: webook-hadoop-claim
+

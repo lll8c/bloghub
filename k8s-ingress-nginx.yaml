@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: webook-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    #host是live.webook.com时，命中我这条
+    - host: live.webook.com
+      http:
+        paths:
+          #请求路径的前缀是 / 的时候
+          #将流量转发过去后面的 webook服务网
+          #端口是 81
+          - backend:
+              service:
+                name: webook
+                port:
+                  number: 81
+            pathType: Prefix
+            path: /

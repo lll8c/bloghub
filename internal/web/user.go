@@ -100,7 +100,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	claims := middleware.UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			//设置过期时间
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30)),
 		},
 		UserAgent: ctx.Request.UserAgent(),
 		Uid:       user.Id,

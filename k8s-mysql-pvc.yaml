@@ -1,0 +1,22 @@
+apiVersion: v1
+#声明需要什么样的volume
+kind: PersistentVolumeClaim
+metadata:
+  name: webook-mysql-claim
+  labels:
+    app: webook-mysql-claim
+spec:
+  storageClassName: suibian
+  #需要的读写方式
+  accessModes:
+    #一个POD读写
+    - ReadWriteOnce
+#    #多个读，一个写
+#    - ReadOnlyMany
+#    #多个读写
+#    - ReadWriteMany
+  resources:
+    requests:
+      #1GB = 1Gi
+      storage: 1Gi
+
