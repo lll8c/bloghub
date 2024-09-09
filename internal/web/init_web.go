@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func RegisterRoutes() *gin.Engine {
+func InitWeb() *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		//解决跨域问题
@@ -44,7 +44,13 @@ func RegisterRoutes() *gin.Engine {
 	//在ctx中创建session
 	r.Use(sessions.Sessions("mysession", store))*/
 	//校验
-	r.Use(middleware.NewLoginJWTMiddlewareBuilder().IgnorePaths("/users/signup").
-		IgnorePaths("/users/login").IgnorePaths("/hello").Build())
+	r.Use(middleware.NewLoginJWTMiddlewareBuilder().
+		IgnorePaths("/users/signup").
+		IgnorePaths("/users/login").
+		IgnorePaths("/hello").
+		IgnorePaths("/users/login_sms/code/send").
+		IgnorePaths("/login_sms").
+		Build())
+
 	return r
 }

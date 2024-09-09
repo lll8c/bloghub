@@ -5,11 +5,12 @@ import (
 	"errors"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/repository"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	ErrUserDuplicateEmail    = repository.ErrUserDuplicateEmail
+	ErrUserDuplicate         = repository.ErrUserDuplicate
 	ErrInvalidUserOrPassword = errors.New("用户不存在或密码不对")
 )
 
@@ -54,4 +55,29 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 
 func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
 	return svc.repo.FindById(ctx, id)
+}
+
+func (svc *UserService) FindOrCreate(ctx *gin.Context, phone string) (domain.User, error) {
+	//这个叫快路径，数据库中找到了就不用去创建了
+	//快路径可以不执行，直接执行慢路径，直接去创建，冲突则创建失败
+	u, err := svc.repo.FindByPhone(ctx, phone)
+	//找到了 或者 报错
+	if err != repository.ErrUserNotFound {
+		return u, err
+	}
+	/*	//在系统资源不足，触发降级之后，不执行慢路径了
+		if ctx.Value("降级") == "true" {
+			return domain.User{}, errors.New("系统降级了")
+		}*/
+	//这个叫慢路径
+	//没有找到，就用手机号码注册一个新用户
+	err = svc.repo.Create(ctx, domain.User{
+		Phone: phone,
+	})
+	//手机号冲突就说明用户存在
+	if err != nil && err != ErrUserDuplicate {
+		return domain.User{}, err
+	}
+	//查找新创建的或已存在的用户，获取id
+	return svc.repo.FindByPhone(ctx, phone)
 }

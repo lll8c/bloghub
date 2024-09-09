@@ -74,7 +74,8 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 
 		//每10s刷新一次，token过期时间
 		now := time.Now()
-		if claims.ExpiresAt.Sub(now) < time.Second*50 {
+		//已经过了10s
+		if claims.ExpiresAt.Sub(now) < time.Minute*30-time.Second*10 {
 			claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute))
 			tokenStr, err = token.SignedString([]byte("secret"))
 			if err != nil {

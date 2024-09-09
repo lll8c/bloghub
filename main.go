@@ -3,8 +3,10 @@ package main
 import (
 	"geektime/webook/config"
 	"geektime/webook/internal/repository"
+	"geektime/webook/internal/repository/cache"
 	"geektime/webook/internal/repository/dao"
 	"geektime/webook/internal/service"
+	"geektime/webook/internal/service/sms/localsms"
 	"geektime/webook/internal/web"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
@@ -14,16 +16,11 @@ import (
 )
 
 func main() {
-	r := web.RegisterRoutes()
+	r := web.InitWeb()
 	db := initDB()
-	u := initUser(db)
-	_ = redis.NewClient(&redis.Options{
-		Addr: config.Config.Redis.Addr,
-	})
-	r.POST("users/signup", u.SignUp)
-	r.POST("users/login", u.Login)
-	r.POST("users/edit", u.Edit)
-	r.POST("users/profile", u.Profile)
+	client := InitRedis()
+	u := initUser(db, client)
+	u.RegisterRoutes(r)
 
 	//r := gin.Default()
 	r.GET("/hello", func(c *gin.Context) {
@@ -32,11 +29,26 @@ func main() {
 	r.Run("0.0.0.0:8080")
 }
 
-func initUser(db *gorm.DB) *web.UserHandler {
+func initUser(db *gorm.DB, client redis.Cmdable) *web.UserHandler {
 	dao := dao.NewUserDao(db)
-	repo := repository.NewUserRepository(dao)
+	userCache := cache.NewUserCache(client)
+	repo := repository.NewUserRepository(dao, userCache)
 	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc)
+
+	codeCache := cache.NewCodeCache(client)
+	codeRepo := repository.NewCodeRepository(codeCache)
+	//暂时不用真的发短信服务
+	/*codeClient, err := dysmsapi.NewClientWithAccessKey("cn-hunan",
+		"...",
+		"...")
+	if err != nil {
+		panic(err)
+	}
+	smsSvc := aliyun.NewService("小微书", codeClient)*/
+	//模拟一下发短信服务，方便测试
+	smsSvc := localsms.NewService()
+	codeSvc := service.NewCodeService(codeRepo, smsSvc, "SMS_472665076")
+	u := web.NewUserHandler(svc, codeSvc)
 	return u
 }
 
@@ -53,4 +65,10 @@ func initDB() *gorm.DB {
 		panic(err)
 	}
 	return db
+}
+
+func InitRedis() redis.Cmdable {
+	return redis.NewClient(&redis.Options{
+		Addr: config.Config.Redis.Addr,
+	})
 }
