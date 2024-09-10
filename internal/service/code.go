@@ -21,16 +21,14 @@ type CodeService interface {
 }
 
 type codeService struct {
-	repo  repository.CodeRepository
-	sms   sms.Service
-	tplId string
+	repo repository.CodeRepository
+	sms  sms.Service
 }
 
-func NewCodeService(repo repository.CodeRepository, smsSvc sms.Service, tplId string) CodeService {
+func NewCodeService(repo repository.CodeRepository, smsSvc sms.Service) CodeService {
 	return &codeService{
-		repo:  repo,
-		sms:   smsSvc,
-		tplId: tplId,
+		repo: repo,
+		sms:  smsSvc,
 	}
 }
 
@@ -43,7 +41,7 @@ func (svc *codeService) Send(ctx context.Context, biz, phone string) error {
 		return err
 	}
 	//通过手机短信服务发送验证码
-	return svc.sms.Send(ctx, svc.tplId, []string{code}, phone)
+	return svc.sms.Send(ctx, []string{code}, phone)
 }
 
 func (svc *codeService) Verify(ctx context.Context,

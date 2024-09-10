@@ -18,11 +18,11 @@ type UserHandler struct {
 	emailExp    *regexp2.Regexp //邮箱校验器
 	passwordExp *regexp2.Regexp //密码校验器
 	phoneExp    *regexp2.Regexp //手机号码校验器
-	svc         *service.UserService
+	svc         service.UserService
 	codeSvc     service.CodeService
 }
 
-func NewUserHandler(svc *service.UserService, codeSvc service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
 	//用于校验密码和邮箱的正则表达式
 	const (
 		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
@@ -49,7 +49,6 @@ func (u *UserHandler) RegisterRoutes(r *gin.Engine) {
 	r.POST("/users/login_sms/code/send", u.SendLoginSMSCode)
 	//校验验证码
 	r.POST("/login_sms", u.LoginSMS)
-
 }
 
 func (u *UserHandler) LoginSMS(ctx *gin.Context) {
@@ -164,6 +163,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	ok, _ := u.emailExp.MatchString(req.Email)
 	if !ok {
 		ctx.String(http.StatusOK, "你的邮箱格式不对")
+		return
 	}
 	//校验密码
 	if req.Password != req.ConfirmPassword {
@@ -281,6 +281,44 @@ func (u *UserHandler) Logout(ctx *gin.Context) {
 }
 
 func (u *UserHandler) Edit(ctx *gin.Context) {
+	// 嵌入一段刷新过期时间的代码
+	type Req struct {
+		// 改邮箱，密码，或者能不能改手机号
+		Nickname string `json:"nickname"`
+		// YYYY-MM-DD
+		Birthday string `json:"birthday"`
+		AboutMe  string `json:"aboutMe"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	//sess := sessions.Default(ctx)
+	//sess.Get("uid")
+	uc, ok := ctx.MustGet("claims").(middleware.UserClaims)
+	if !ok {
+		//ctx.String(http.StatusOK, "系统错误")
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	// 用户输入不对
+	birthday, err := time.Parse(time.DateOnly, req.Birthday)
+	if err != nil {
+		//ctx.String(http.StatusOK, "系统错误")
+		ctx.String(http.StatusOK, "生日格式不对")
+		return
+	}
+	err = u.svc.UpdateNonSensitiveInfo(ctx, domain.User{
+		Id:       uc.Uid,
+		Nickname: req.Nickname,
+		Birthday: birthday,
+		AboutMe:  req.AboutMe,
+	})
+	if err != nil {
+		ctx.String(http.StatusOK, "系统异常")
+		return
+	}
+	ctx.String(http.StatusOK, "更新成功")
 }
 
 func (u *UserHandler) Profile(ctx *gin.Context) {
@@ -301,7 +339,4 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		fmt.Println(err)
 	}
 	fmt.Println(user)
-}
-
-func (u *UserHandler) Profile2(ctx *gin.Context) {
 }

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/repository"
-	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -14,17 +13,26 @@ var (
 	ErrInvalidUserOrPassword = errors.New("用户不存在或密码不对")
 )
 
-type UserService struct {
-	repo *repository.UserRepository
+type UserService interface {
+	SignUp(ctx context.Context, u domain.User) error
+	Login(ctx context.Context, email string, password string) (domain.User, error)
+	UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error
+	FindById(ctx context.Context, uid int64) (domain.User, error)
+	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	Profile(ctx context.Context, id int64) (domain.User, error)
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
-	return &UserService{
+type userService struct {
+	repo repository.UserRepository
+}
+
+func NewUserService(repo repository.UserRepository) UserService {
+	return &userService{
 		repo: repo,
 	}
 }
 
-func (svc *UserService) SignUp(ctx context.Context, u domain.User) error {
+func (svc *userService) SignUp(ctx context.Context, u domain.User) error {
 	//加密
 	hash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -34,7 +42,7 @@ func (svc *UserService) SignUp(ctx context.Context, u domain.User) error {
 	return svc.repo.Create(ctx, u)
 }
 
-func (svc *UserService) Login(ctx context.Context, email string, password string) (domain.User, error) {
+func (svc *userService) Login(ctx context.Context, email string, password string) (domain.User, error) {
 	//根据邮箱查找用户
 	u, err := svc.repo.FindByEmail(ctx, email)
 	//用户不存在
@@ -53,11 +61,12 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 	return u, err
 }
 
-func (svc *UserService) Profile(ctx context.Context, id int64) (domain.User, error) {
+func (svc *userService) Profile(ctx context.Context, id int64) (domain.User, error) {
+	//在系统内部，基本上都是用 ID 的
 	return svc.repo.FindById(ctx, id)
 }
 
-func (svc *UserService) FindOrCreate(ctx *gin.Context, phone string) (domain.User, error) {
+func (svc *userService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
 	//这个叫快路径，数据库中找到了就不用去创建了
 	//快路径可以不执行，直接执行慢路径，直接去创建，冲突则创建失败
 	u, err := svc.repo.FindByPhone(ctx, phone)
@@ -80,4 +89,13 @@ func (svc *UserService) FindOrCreate(ctx *gin.Context, phone string) (domain.Use
 	}
 	//查找新创建的或已存在的用户，获取id
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *userService) FindById(ctx context.Context, uid int64) (domain.User, error) {
+	return svc.repo.FindById(ctx, uid)
+}
+
+// UpdateNonSensitiveInfo 编辑个人信息
+func (svc *userService) UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error {
+	return svc.repo.UpdateNonZeroFields(ctx, user)
 }

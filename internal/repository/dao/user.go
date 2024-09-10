@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
 	"time"
@@ -15,12 +14,20 @@ var (
 	ErrUserNotFound  = errors.New("用户没找到")
 )
 
-type UserDAO struct {
+type UserDAO interface {
+	Insert(ctx context.Context, u User) error
+	FindByEmail(ctx context.Context, email string) (User, error)
+	FindById(ctx context.Context, id int64) (User, error)
+	FindByPhone(ctx context.Context, phone string) (User, error)
+	UpdateById(ctx context.Context, entity User) error
+}
+
+type GORMUserDAO struct {
 	db *gorm.DB
 }
 
-func NewUserDao(db *gorm.DB) *UserDAO {
-	return &UserDAO{
+func NewUserDao(db *gorm.DB) UserDAO {
+	return &GORMUserDAO{
 		db: db,
 	}
 }
@@ -32,14 +39,19 @@ type User struct {
 	Email    sql.NullString `gorm:"unique"`
 	Password string
 	//手机号，用户唯一但可以为空
-	Phone sql.NullString `gorm:"unique"`
+	Phone    sql.NullString `gorm:"unique"`
+	Nickname string         `gorm:"type=varchar(128)"`
+	// YYYY-MM-DD
+	Birthday int64
+	AboutMe  string `gorm:"type=varchar(4096)"`
+
 	//创建时间，毫秒
 	Ctime int64
 	//更新时间，毫秒
 	Utime int64
 }
 
-func (dao *UserDAO) Insert(ctx context.Context, u User) error {
+func (dao *GORMUserDAO) Insert(ctx context.Context, u User) error {
 	//毫秒数
 	now := time.Now().UnixMilli()
 	u.Utime = now
@@ -57,7 +69,7 @@ func (dao *UserDAO) Insert(ctx context.Context, u User) error {
 	return err
 }
 
-func (dao *UserDAO) FindByEmail(ctx context.Context, email string) (User, error) {
+func (dao *GORMUserDAO) FindByEmail(ctx context.Context, email string) (User, error) {
 	var u User
 	err := dao.db.WithContext(ctx).Where("email = ?", email).First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -66,7 +78,7 @@ func (dao *UserDAO) FindByEmail(ctx context.Context, email string) (User, error)
 	return u, err
 }
 
-func (dao *UserDAO) FindById(ctx context.Context, id int64) (User, error) {
+func (dao *GORMUserDAO) FindById(ctx context.Context, id int64) (User, error) {
 	var u User
 	err := dao.db.WithContext(ctx).Where("id = ?", id).First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -75,11 +87,25 @@ func (dao *UserDAO) FindById(ctx context.Context, id int64) (User, error) {
 	return u, err
 }
 
-func (dao *UserDAO) FindByPhone(ctx *gin.Context, phone string) (User, error) {
+func (dao *GORMUserDAO) FindByPhone(ctx context.Context, phone string) (User, error) {
 	var u User
 	err := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&u).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return u, ErrUserNotFound
 	}
 	return u, err
+}
+
+func (dao *GORMUserDAO) UpdateById(ctx context.Context, entity User) error {
+
+	// 这种写法依赖于 GORM 的零值和主键更新特性
+	// Update 非零值 WHERE id = ?
+	//return dao.db.WithContext(ctx).Updates(&entity).Error
+	return dao.db.WithContext(ctx).Model(&entity).Where("id = ?", entity.Id).
+		Updates(map[string]any{
+			"utime":    time.Now().UnixMilli(),
+			"nickname": entity.Nickname,
+			"birthday": entity.Birthday,
+			"about_me": entity.AboutMe,
+		}).Error
 }

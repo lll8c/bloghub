@@ -2,9 +2,9 @@ import React from 'react';
 import { Button, Form, Input } from 'antd';
 import axios from "@/axios/axios";
 import router from "next/router";
-//users/login_sms
+
 const onFinish = (values: any) => {
-    axios.post("/login_sms", values)
+    axios.post("/users/login_sms", values)
         .then((res) => {
             if(res.status != 200) {
                 alert(res.statusText);
