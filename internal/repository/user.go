@@ -47,9 +47,12 @@ func (r *CacheUserRepository) FindById(ctx context.Context, id int64) (domain.Us
 	//不管查找redis有没有出错，只要没找到，就查找数据库
 	//后续采用限流或布隆过滤器防止数据库被冲垮
 	ud, err := r.dao.FindById(ctx, id)
+	if err != nil {
+		return domain.User{}, err
+	}
 	u := entityToDomain(ud)
 	//从数据库中找到数据后，写到redis缓存中
-	err = r.cache.Set(ctx, u)
+	_ = r.cache.Set(ctx, u)
 	return u, err
 }
 

@@ -45,8 +45,8 @@ func (svc *userService) SignUp(ctx context.Context, u domain.User) error {
 func (svc *userService) Login(ctx context.Context, email string, password string) (domain.User, error) {
 	//根据邮箱查找用户
 	u, err := svc.repo.FindByEmail(ctx, email)
-	//用户不存在
 	if err != nil {
+		//用户不存在
 		if err == repository.ErrUserNotFound {
 			return domain.User{}, ErrInvalidUserOrPassword
 		}

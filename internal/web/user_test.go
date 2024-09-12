@@ -21,6 +21,7 @@ func TestNil(t *testing.T) {
 }
 
 func TestUserHandler_SignUp(t *testing.T) {
+	//测试用例
 	var testCase = []struct {
 		name    string
 		mock    func(ctrl *gomock.Controller) service.UserService
@@ -147,6 +148,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 			defer ctrl.Finish()
 
 			server := gin.Default()
+			//创建模拟对象，并设置模拟调用
 			h := NewUserHandler(tc.mock(ctrl), nil)
 			h.RegisterRoutes(server)
 			//构造http请求
@@ -161,7 +163,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 			//gin会处理这个请求
 			//响应写回到resp里
 			server.ServeHTTP(resp, req)
-			
+
 			t.Log(resp)
 			assert.Equal(t, tc.wantCode, resp.Code)
 			assert.Equal(t, tc.wantBody, resp.Body.String())

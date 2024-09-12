@@ -8,7 +8,7 @@ if ttl == -1 then
     -- 系统异常
     -- key 存在，但是没有过期时间
     return -2
-elseif ttl == -2 or ttl < 599 then
+elseif ttl == -2 or ttl < 540 then
     -- key不存在或key已经过了1分钟
     -- 可以发验证码
     redis.call("set", key, val)

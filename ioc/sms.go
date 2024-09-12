@@ -10,8 +10,10 @@ import (
 
 func InitSMSService() sms.Service {
 	return localsms.NewService()
-	// 如果有需要，就可以用这个
+	// 如果有需要，就可以用这个ailyun的服务
 	//return aliyun.NewService()
+	//加了限流的阿里云服务
+	//return ratelimit.NewLimitSMSService()
 }
 
 func InitAliyunSMSService() sms.Service {
@@ -29,5 +31,5 @@ func InitAliyunSMSService() sms.Service {
 	if err != nil {
 		panic(err)
 	}
-	return aliyun.NewService("小微书", codeClient, "SMS_472665076")
+	return aliyun.NewService("小微书", codeClient)
 }

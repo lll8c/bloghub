@@ -18,11 +18,11 @@ type UserHandler struct {
 	emailExp    *regexp2.Regexp //邮箱校验器
 	passwordExp *regexp2.Regexp //密码校验器
 	phoneExp    *regexp2.Regexp //手机号码校验器
-	svc         service.UserService
+	userSvc     service.UserService
 	codeSvc     service.CodeService
 }
 
-func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
+func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService) *UserHandler {
 	//用于校验密码和邮箱的正则表达式
 	const (
 		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
@@ -32,7 +32,7 @@ func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserH
 	)
 	//初始化校验器
 	return &UserHandler{
-		svc:         svc,
+		userSvc:     userSvc,
 		codeSvc:     codeSvc,
 		emailExp:    regexp2.MustCompile(emailRegexPattern, regexp2.None),
 		passwordExp: regexp2.MustCompile(passwordRegexPattern, regexp2.None),
@@ -91,7 +91,7 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		})
 		return
 	}
-	user, err := u.svc.FindOrCreate(ctx, req.Phone)
+	user, err := u.userSvc.FindOrCreate(ctx, req.Phone)
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5,
@@ -120,30 +120,30 @@ func (u *UserHandler) SendLoginSMSCode(ctx *gin.Context) {
 	if err := ctx.Bind(&req); err != nil {
 		return
 	}
+	//调用短信服务发送短信
 	err := u.codeSvc.Send(ctx, "login", req.Phone)
 	if err != nil {
 		if err == service.ErrCodeSendTooMany {
 			ctx.JSON(http.StatusOK, Result{
-				Code: 5,
-				Msg:  "发送太频繁",
+				Code: 4,
+				Msg:  "短信发送太频繁，请稍后再试",
 			})
 		} else if err == service.ErrCodeVerifyTooMany {
 			ctx.JSON(http.StatusOK, Result{
-				Code: 5,
+				Code: 4,
 				Msg:  "验证太频繁",
 			})
 		} else {
 			fmt.Println(err)
 			ctx.JSON(http.StatusOK, Result{
-				Code: 5,
+				Code: 4,
 				Msg:  "系统错误",
 			})
 		}
 		return
 	}
 	ctx.JSON(http.StatusOK, Result{
-		Code: 5,
-		Msg:  "发送成功",
+		Msg: "发送成功",
 	})
 }
 
@@ -176,7 +176,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	//调用service层
-	err := u.svc.SignUp(ctx, domain.User{
+	err := u.userSvc.SignUp(ctx, domain.User{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -201,7 +201,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	if err := ctx.Bind(&req); err != nil {
 		return
 	}
-	user, err := u.svc.Login(ctx, req.Email, req.Password)
+	user, err := u.userSvc.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		if err == service.ErrInvalidUserOrPassword {
 			ctx.String(http.StatusOK, "用户不存在或密码不对")
@@ -248,7 +248,7 @@ func (u *UserHandler) Login2(ctx *gin.Context) {
 	if err := ctx.Bind(&req); err != nil {
 		return
 	}
-	user, err := u.svc.Login(ctx, req.Email, req.Password)
+	user, err := u.userSvc.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		if err == service.ErrInvalidUserOrPassword {
 			ctx.String(http.StatusOK, "用户不存在或密码不对")
@@ -308,7 +308,7 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "生日格式不对")
 		return
 	}
-	err = u.svc.UpdateNonSensitiveInfo(ctx, domain.User{
+	err = u.userSvc.UpdateNonSensitiveInfo(ctx, domain.User{
 		Id:       uc.Uid,
 		Nickname: req.Nickname,
 		Birthday: birthday,
@@ -334,7 +334,7 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "系统错误")
 		return
 	}
-	user, err := u.svc.Profile(ctx, claims.Uid)
+	user, err := u.userSvc.Profile(ctx, claims.Uid)
 	if err != nil {
 		fmt.Println(err)
 	}

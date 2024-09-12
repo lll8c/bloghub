@@ -11,21 +11,20 @@ import (
 type Service struct {
 	signName string
 	client   *dysmsapi.Client
-	tplId    string
 }
 
-func NewService(signName string, client *dysmsapi.Client, tplId string) *Service {
+func NewService(signName string, client *dysmsapi.Client) *Service {
 	return &Service{
 		signName: signName,
 		client:   client,
-		tplId:    tplId}
+	}
 }
 
-func (s Service) Send(ctx context.Context, args []string, numbers ...string) error {
+func (s Service) Send(ctx context.Context, tplId string, args []string, numbers ...string) error {
 	//创建请求
 	req := dysmsapi.CreateSendSmsRequest()
 	req.SignName = s.signName
-	req.TemplateCode = s.tplId
+	req.TemplateCode = tplId
 	//请求协议
 	req.Scheme = "https"
 	//接收短信的手机号码
