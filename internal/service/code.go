@@ -41,7 +41,8 @@ func (svc *codeService) Send(ctx context.Context, biz, phone string) error {
 		return err
 	}
 	//通过手机短信服务发送验证码
-	return svc.sms.Send(ctx, []string{code}, phone)
+	tplId := "SMS_472665076"
+	return svc.sms.Send(ctx, tplId, []string{code}, phone)
 }
 
 func (svc *codeService) Verify(ctx context.Context,

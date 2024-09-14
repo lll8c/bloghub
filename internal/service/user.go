@@ -19,6 +19,7 @@ type UserService interface {
 	UpdateNonSensitiveInfo(ctx context.Context, user domain.User) error
 	FindById(ctx context.Context, uid int64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	FindOrCreateByWechat(ctx context.Context, phone string) (domain.User, error)
 	Profile(ctx context.Context, id int64) (domain.User, error)
 }
 
@@ -89,6 +90,23 @@ func (svc *userService) FindOrCreate(ctx context.Context, phone string) (domain.
 	}
 	//查找新创建的或已存在的用户，获取id
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *userService) FindOrCreateByWechat(ctx context.Context, phone string) (domain.User, error) {
+	u, err := svc.repo.FindByWechat(ctx, phone)
+	//找到了 或者 报错
+	if err != repository.ErrUserNotFound {
+		return u, err
+	}
+	err = svc.repo.Create(ctx, domain.User{
+		Phone: phone,
+	})
+	//手机号冲突就说明用户存在
+	if err != nil && err != ErrUserDuplicate {
+		return domain.User{}, err
+	}
+	//查找新创建的或已存在的用户，获取id
+	return svc.repo.FindByWechat(ctx, phone)
 }
 
 func (svc *userService) FindById(ctx context.Context, uid int64) (domain.User, error) {

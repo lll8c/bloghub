@@ -14,6 +14,8 @@ func InitSMSService() sms.Service {
 	//return aliyun.NewService()
 	//加了限流的阿里云服务
 	//return ratelimit.NewLimitSMSService()
+
+	//可以通过套娃增加功能
 }
 
 func InitAliyunSMSService() sms.Service {

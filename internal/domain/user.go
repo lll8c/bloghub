@@ -16,4 +16,6 @@ type User struct {
 
 	Ctime time.Time
 	Utime time.Time
+	//不要组合，因为将来还有其他登录方式，里面可能有同名字段
+	WechatInfo WechatInfo
 }

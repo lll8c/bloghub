@@ -2,21 +2,23 @@ package middleware
 
 import (
 	"encoding/gob"
+	jwt2 "geektime/webook/internal/web/jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"log"
 	"net/http"
-	"strings"
 	"time"
 )
 
 // LoginJWTMiddlewareBuilder JWT登录校验
 type LoginJWTMiddlewareBuilder struct {
+	jwt2.JwtHandler
 	paths []string
 }
 
-func NewLoginJWTMiddlewareBuilder() *LoginJWTMiddlewareBuilder {
-	return &LoginJWTMiddlewareBuilder{}
+func NewLoginJWTMiddlewareBuilder(jwtHdl jwt2.JwtHandler) *LoginJWTMiddlewareBuilder {
+	return &LoginJWTMiddlewareBuilder{
+		JwtHandler: jwtHdl,
+	}
 }
 
 func (l *LoginJWTMiddlewareBuilder) IgnorePaths(path string) *LoginJWTMiddlewareBuilder {
@@ -24,7 +26,7 @@ func (l *LoginJWTMiddlewareBuilder) IgnorePaths(path string) *LoginJWTMiddleware
 	return l
 }
 
-// Build 登录校验或者刷新登录状态
+// Build 登录校验
 func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 	//用go的方式编码解码
 	gob.Register(time.Now())
@@ -35,22 +37,11 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 				return
 			}
 		}
-		//Bearer xxx.xxx.xxx
-		tokenHeader := ctx.GetHeader("Authorization")
-		if tokenHeader == "" {
-			//没登录
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-		segs := strings.Split(tokenHeader, " ")
-		if len(segs) != 2 {
-			//格式不对，没登录
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
-		tokenStr := segs[1]
+		//提取token
+
+		tokenStr := l.ExtractToken(ctx)
 		//解析时传指针
-		claims := &UserClaims{}
+		claims := &jwt2.UserClaims{}
 		//解析token
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte("secret"), nil
@@ -71,27 +62,13 @@ func (l *LoginJWTMiddlewareBuilder) Build() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-
-		//每10s刷新一次，token过期时间
-		now := time.Now()
-		//已经过了10s
-		if claims.ExpiresAt.Sub(now) < time.Minute*30-time.Second*10 {
-			claims.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute))
-			tokenStr, err = token.SignedString([]byte("secret"))
-			if err != nil {
-				log.Println("jwt 续约失败")
-				return
-			}
-			ctx.Header("x-jwt-token", tokenStr)
+		//检测用户是否已经退出登录
+		err = l.CheckSession(ctx, claims.Ssid)
+		if err != nil {
+			//已经退出登录
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
 		}
-
 		ctx.Set("claims", claims)
 	}
-}
-
-type UserClaims struct {
-	jwt.RegisteredClaims
-	//声明你自己的要放进去token里面的数据
-	Uid       int64
-	UserAgent string
 }

@@ -16,7 +16,21 @@ import (
 	"testing"
 )
 
-func TestNil(t *testing.T) {
+type A interface {
+	f()
+}
+
+type B struct {
+	A
+}
+
+type C struct {
+}
+
+func (c C) f() {
+}
+
+func Test(t *testing.T) {
 
 }
 
@@ -40,7 +54,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				}).Return(nil)
 				return usersvc
 			},
-			reqBody: `{		
+			reqBody: `{
 				"email": "123@qq.com",
 				"password": "hello@123",
 				"confirm_password": "hello@123"
@@ -54,7 +68,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				return usersvc
 			},
-			reqBody: `	
+			reqBody: `
 				"email1ello@123nfirm_passwllo@123"
 				}`,
 			wantCode: http.StatusBadRequest,
@@ -66,7 +80,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				return usersvc
 			},
-			reqBody: `{		
+			reqBody: `{
 				"email": "123",
 				"password": "hello@123",
 				"confirm_password": "hello@123"
@@ -80,7 +94,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				return usersvc
 			},
-			reqBody: `{		
+			reqBody: `{
 				"email": "123@qq.com",
 				"password": "hello@1231324",
 				"confirm_password": "hello@123"
@@ -94,7 +108,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				return usersvc
 			},
-			reqBody: `{		
+			reqBody: `{
 				"email": "123@qq.com",
 				"password": "hello123",
 				"confirm_password": "hello123"
@@ -112,7 +126,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				}).Return(errors.New("随便一个error"))
 				return usersvc
 			},
-			reqBody: `{		
+			reqBody: `{
 				"email": "123@qq.com",
 				"password": "hello@123",
 				"confirm_password": "hello@123"
@@ -130,7 +144,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 				}).Return(service.ErrUserDuplicate)
 				return usersvc
 			},
-			reqBody: `{		
+			reqBody: `{
 				"email": "123@qq.com",
 				"password": "hello@123",
 				"confirm_password": "hello@123"

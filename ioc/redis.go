@@ -10,3 +10,7 @@ func InitRedis() redis.Cmdable {
 		Addr: config.Config.Redis.Addr,
 	})
 }
+
+func NewRatelimiter() redis.Limiter {
+	return nil
+}

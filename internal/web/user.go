@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/service"
-	"geektime/webook/internal/web/middleware"
+	jwt2 "geektime/webook/internal/web/jwt"
 	"github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -20,9 +20,10 @@ type UserHandler struct {
 	phoneExp    *regexp2.Regexp //手机号码校验器
 	userSvc     service.UserService
 	codeSvc     service.CodeService
+	jwt2.JwtHandler
 }
 
-func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService) *UserHandler {
+func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService, jwtHdl jwt2.JwtHandler) *UserHandler {
 	//用于校验密码和邮箱的正则表达式
 	const (
 		emailRegexPattern = "^\\w+([-+.]\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*$"
@@ -34,6 +35,7 @@ func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService) *U
 	return &UserHandler{
 		userSvc:     userSvc,
 		codeSvc:     codeSvc,
+		JwtHandler:  jwtHdl,
 		emailExp:    regexp2.MustCompile(emailRegexPattern, regexp2.None),
 		passwordExp: regexp2.MustCompile(passwordRegexPattern, regexp2.None),
 		phoneExp:    regexp2.MustCompile(phoneRegexPattern, regexp2.None),
@@ -42,13 +44,49 @@ func NewUserHandler(userSvc service.UserService, codeSvc service.CodeService) *U
 
 func (u *UserHandler) RegisterRoutes(r *gin.Engine) {
 	r.POST("users/signup", u.SignUp)
-	r.POST("users/login", u.Login)
+	r.POST("users/login", u.LoginJWT)
+	r.POST("users/logout", u.LogoutJWT)
 	r.POST("users/edit", u.Edit)
 	r.POST("users/profile", u.Profile)
 	//发送验证码
 	r.POST("/users/login_sms/code/send", u.SendLoginSMSCode)
 	//校验验证码
 	r.POST("/login_sms", u.LoginSMS)
+	r.POST("/refresh_token", u.RefreshToken)
+}
+
+// RefreshToken 刷新短token
+func (u *UserHandler) RefreshToken(ctx *gin.Context) {
+	//只有这个接口拿出来的才是refresh_token，其他地方都是access_token
+	tokenStr := u.ExtractToken(ctx)
+	var rClaims jwt2.RefreshClaims
+	token, err := jwt.ParseWithClaims(tokenStr, &rClaims, func(token *jwt.Token) (interface{}, error) {
+		return jwt2.RCJWTKey, nil
+	})
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	if token == nil || !token.Valid {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	//检测用户是否已经退出登录
+	err = u.CheckSession(ctx, rClaims.Ssid)
+	if err != nil {
+		//已经退出登录
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	//换个新的access_token
+	err = u.SetJWTToken(ctx, rClaims.Uid, rClaims.Ssid)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "OK",
+	})
 }
 
 func (u *UserHandler) LoginSMS(ctx *gin.Context) {
@@ -100,7 +138,7 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 	}
 	//用jwt设置登录状态
 	//创建并设置token
-	if err := u.setJWTTloken(ctx, user.Id); err != nil {
+	if err := u.SetLoginToken(ctx, user.Id); err != nil {
 		ctx.String(http.StatusInternalServerError, "系统错误")
 		return
 	}
@@ -191,8 +229,8 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "注册成功")
 }
 
-// Login 使用jwt登录
-func (u *UserHandler) Login(ctx *gin.Context) {
+// LoginJWT 使用jwt登录
+func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -212,7 +250,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 	//用jwt设置登录状态
 	//创建并设置token
-	if err := u.setJWTTloken(ctx, user.Id); err != nil {
+	if err := u.SetLoginToken(ctx, user.Id); err != nil {
 		ctx.String(http.StatusInternalServerError, "系统错误")
 		return
 	}
@@ -220,26 +258,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "登录成功")
 }
 
-func (u *UserHandler) setJWTTloken(ctx *gin.Context, uid int64) error {
-	claims := middleware.UserClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			//设置过期时间
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30)),
-		},
-		UserAgent: ctx.Request.UserAgent(),
-		Uid:       uid,
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenStr, err := token.SignedString([]byte("secret"))
-	if err != nil {
-		return err
-	}
-	//将token放到header中
-	ctx.Header("x-jwt-token", tokenStr)
-	return nil
-}
-
-func (u *UserHandler) Login2(ctx *gin.Context) {
+func (u *UserHandler) LoginSession(ctx *gin.Context) {
 	type LoginReq struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -269,15 +288,31 @@ func (u *UserHandler) Login2(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "登录成功")
 }
 
-// Logout 登出
-func (u *UserHandler) Logout(ctx *gin.Context) {
-	sess := sessions.Default(ctx)
+// LogoutSession 登出
+func (u *UserHandler) LogoutSession(ctx *gin.Context) {
+	//使用session
+	/*sess := sessions.Default(ctx)
 	sess.Options(sessions.Options{
 		//删除用户的cookie
 		MaxAge: -1,
 	})
 	sess.Save()
-	ctx.String(http.StatusOK, "退出登录成功")
+	ctx.String(http.StatusOK, "退出登录成功")*/
+}
+
+// LogoutJWT 使用jwt登出
+func (u *UserHandler) LogoutJWT(ctx *gin.Context) {
+	err := u.ClearToken(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "退出登录失败",
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, Result{
+		Msg: "退出登录Ok",
+	})
 }
 
 func (u *UserHandler) Edit(ctx *gin.Context) {
@@ -295,7 +330,7 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 	}
 	//sess := sessions.Default(ctx)
 	//sess.Get("uid")
-	uc, ok := ctx.MustGet("claims").(middleware.UserClaims)
+	uc, ok := ctx.MustGet("claims").(jwt2.UserClaims)
 	if !ok {
 		//ctx.String(http.StatusOK, "系统错误")
 		ctx.AbortWithStatus(http.StatusUnauthorized)
@@ -329,7 +364,7 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		return
 	}
 	//类型断言
-	claims, ok := c.(*middleware.UserClaims)
+	claims, ok := c.(*jwt2.UserClaims)
 	if !ok {
 		ctx.String(http.StatusOK, "系统错误")
 		return

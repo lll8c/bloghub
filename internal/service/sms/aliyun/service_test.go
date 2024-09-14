@@ -1,12 +1,18 @@
 package aliyun
 
-/*
+import (
+	"context"
+	"fmt"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
+	"testing"
+)
+
 // 这个需要手动跑，也就是你需要在本地搞好这些环境变量
 func TestSender(t *testing.T) {
 
 	client, err := dysmsapi.NewClientWithAccessKey("cn-hunan",
 		"123",
-		"")
+		"123")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,4 +27,4 @@ func TestSender(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-}*/
+}

@@ -11,6 +11,7 @@ function Page() {
             .then((res) => res.data)
             .then((data) => {
                 setLoading(false)
+                //跳转到微信扫码地址
                 if(data && data.data) {
                     window.location.href = data.data
                 }

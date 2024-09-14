@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"geektime/webook/internal/web"
+	jwt2 "geektime/webook/internal/web/jwt"
 	"geektime/webook/internal/web/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -9,15 +10,17 @@ import (
 	"time"
 )
 
-func InitWebServer(mdls []gin.HandlerFunc, userHandler *web.UserHandler) *gin.Engine {
+func InitWebServer(mdls []gin.HandlerFunc,
+	userHandler *web.UserHandler, wechatHandler *web.OAuth2WechatHandler) *gin.Engine {
 	r := gin.Default()
 	r.Use(mdls...)
 	//注册用户路由
 	userHandler.RegisterRoutes(r)
+	wechatHandler.RegisterRoutes(r)
 	return r
 }
 
-func InitMiddlewares() []gin.HandlerFunc {
+func InitMiddlewares(jwtHdl jwt2.JwtHandler) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		//解决跨域问题
 		cors.New(cors.Config{
@@ -30,7 +33,7 @@ func InitMiddlewares() []gin.HandlerFunc {
 			//允许带cookie之类的用户认证信息
 			AllowCredentials: true,
 			//允许包含的请求
-			ExposeHeaders: []string{"x-jwt-token"},
+			ExposeHeaders: []string{"x-jwt-token", "x-refresh-token"},
 			//使用方法校验忽略掉AllowOrigins
 			AllowOriginFunc: func(origin string) bool {
 				if strings.Contains(origin, "localhost") {
@@ -43,12 +46,15 @@ func InitMiddlewares() []gin.HandlerFunc {
 		}),
 		//JWT中间件校验
 		//在校验中忽略某些路由
-		middleware.NewLoginJWTMiddlewareBuilder().
+		middleware.NewLoginJWTMiddlewareBuilder(jwtHdl).
 			IgnorePaths("/users/signup").
 			IgnorePaths("/users/login").
 			IgnorePaths("/hello").
 			IgnorePaths("/users/login_sms/code/send").
 			IgnorePaths("/login_sms").
+			IgnorePaths("/oauth2/wechat/authurl").
+			IgnorePaths("/oauth2/wechat/callback").
+			IgnorePaths("/refresh_token").
 			Build(),
 	}
 }
