@@ -18,6 +18,7 @@ func InitWebServer() *gin.Engine {
 	wire.Build(
 		//第三方依赖
 		ioc.InitDB, ioc.InitRedis,
+		ioc.InitLoggerV1,
 		//dao
 		dao.NewUserDao,
 		//cache
@@ -28,6 +29,7 @@ func InitWebServer() *gin.Engine {
 		ioc.InitSMSService,
 		ioc.InitWechatService,
 		service.NewCodeService, service.NewUserService,
+
 		//handler
 		jwt2.NewRedisJWTHandler,
 		web.NewUserHandler,

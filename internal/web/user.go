@@ -9,6 +9,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
@@ -82,6 +83,7 @@ func (u *UserHandler) RefreshToken(ctx *gin.Context) {
 	err = u.SetJWTToken(ctx, rClaims.Uid, rClaims.Ssid)
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
+		zap.L().Error("设置jwtToken异常")
 		return
 	}
 	ctx.JSON(http.StatusOK, Result{
@@ -171,6 +173,7 @@ func (u *UserHandler) SendLoginSMSCode(ctx *gin.Context) {
 				Code: 4,
 				Msg:  "验证太频繁",
 			})
+			zap.L().Error("验证太频繁", zap.Error(err))
 		} else {
 			fmt.Println(err)
 			ctx.JSON(http.StatusOK, Result{

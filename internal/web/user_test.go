@@ -11,27 +11,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-type A interface {
-	f()
-}
-
-type B struct {
-	A
-}
-
-type C struct {
-}
-
-func (c C) f() {
-}
-
 func Test(t *testing.T) {
-
+	zap.L().Debug("msg", zap.String("name", "zs"))
 }
 
 func TestUserHandler_SignUp(t *testing.T) {

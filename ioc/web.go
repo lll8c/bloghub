@@ -1,11 +1,15 @@
 package ioc
 
 import (
+	"context"
 	"geektime/webook/internal/web"
 	jwt2 "geektime/webook/internal/web/jwt"
 	"geektime/webook/internal/web/middleware"
+	"geektime/webook/pkg/logger"
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"strings"
 	"time"
 )
@@ -20,7 +24,16 @@ func InitWebServer(mdls []gin.HandlerFunc,
 	return r
 }
 
-func InitMiddlewares(jwtHdl jwt2.JwtHandler) []gin.HandlerFunc {
+func InitMiddlewares(jwtHdl jwt2.JwtHandler, l logger.LoggerV1) []gin.HandlerFunc {
+	//web请求日志打印 配置
+	bd := middleware.NewLogMiddlewareBuilder(func(ctx context.Context, al *middleware.AccessLog) {
+		l.Debug("HTTP请求", logger.Field{Key: "al", Val: al})
+	}).AllowReqBody(true).AllowRespBody(true)
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		ok := viper.GetBool("web.logreq")
+		bd.AllowReqBody(ok)
+	})
+
 	return []gin.HandlerFunc{
 		//解决跨域问题
 		cors.New(cors.Config{
@@ -44,6 +57,8 @@ func InitMiddlewares(jwtHdl jwt2.JwtHandler) []gin.HandlerFunc {
 			//你的开发环境，包含localhost就允许访问
 			MaxAge: 12 * time.Hour,
 		}),
+		//日志打印请求和响应
+		bd.Build(),
 		//JWT中间件校验
 		//在校验中忽略某些路由
 		middleware.NewLoginJWTMiddlewareBuilder(jwtHdl).

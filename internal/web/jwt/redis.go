@@ -90,13 +90,14 @@ func (h *RedisJWTHandler) SetRefreshToken(ctx *gin.Context, uid int64, ssid stri
 
 // CheckSession 从redis中查询标识，判断是否已经退出登录
 func (h *RedisJWTHandler) CheckSession(ctx *gin.Context, ssid string) error {
-	cnt, err := h.cmd.Exists(ctx, fmt.Sprintf("users:ssid:%s", ssid)).Result()
-	if err != nil {
+	val, err := h.cmd.Exists(ctx, fmt.Sprintf("users:ssid:%s", ssid)).Result()
+	if err != nil && err != redis.Nil {
 		return err
 	}
-	if cnt > 0 {
+	if val > 0 {
 		return errors.New("token 无效")
 	}
+	// err == redis.Nil
 	return nil
 }
 

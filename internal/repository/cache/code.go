@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 var (
@@ -44,7 +45,12 @@ func (c *RedisCodeCache) Set(ctx context.Context, biz, phone, code string) error
 	case -2:
 		return errors.New("验证码存在，但是没有过期时间")
 	case -1: //发送太频繁
+		zap.L().Warn("短信发送太频繁",
+			zap.String("biz", biz),
+			//phone不能直接打印
+			zap.String("phone", phone))
 		return ErrCodeSendTooMany
+
 	default: //没问题
 		return nil
 	}

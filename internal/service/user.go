@@ -5,6 +5,7 @@ import (
 	"errors"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/repository"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -75,6 +76,7 @@ func (svc *userService) FindOrCreate(ctx context.Context, phone string) (domain.
 	if err != repository.ErrUserNotFound {
 		return u, err
 	}
+	zap.L().Info("用户未注册", zap.String("phone", phone))
 	/*	//在系统资源不足，触发降级之后，不执行慢路径了
 		if ctx.Value("降级") == "true" {
 			return domain.User{}, errors.New("系统降级了")
