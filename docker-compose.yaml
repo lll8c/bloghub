@@ -11,8 +11,8 @@ services:
 #      - 初始化脚本
       - ./script/mysql/:/docker-entrypoint-initdb.d/
     ports:
-#      - 外部访问用 13317
-      - 13317:3306
+#      - 外部访问用 13316
+      - 13316:3306
 
   redis:
     image: 'hub.atomgit.com/amd64/redis:7.0.13'
@@ -20,6 +20,15 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - '6379:6379'
+
+  mongo:
+    image: hub.atomgit.com/amd64/mongo:4.4.24
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - 27017:27017
 #  etcd:
 #    image: "docker.m.daocloud.io/bitnami/etcd:latest"
 #    restart: always

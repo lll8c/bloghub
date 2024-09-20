@@ -1,6 +1,5 @@
 package repository
 
-/*
 import (
 	"context"
 	"database/sql"
@@ -163,4 +162,3 @@ func TestCacheUserRepository_FindById(t *testing.T) {
 		})
 	}
 }
-*/

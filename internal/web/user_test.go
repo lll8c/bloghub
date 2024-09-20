@@ -25,7 +25,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 	//测试用例
 	var testCase = []struct {
 		name    string
-		mock    func(ctrl *gomock.Controller) service.UserService
+		mock    func(ctrl *gomock.Controller) (service.UserService, service.CodeService)
 		reqBody string
 
 		wantCode int
@@ -33,13 +33,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 	}{
 		{
 			name: "注册成功",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				usersvc.EXPECT().SignUp(gomock.Any(), domain.User{
 					Email:    "123@qq.com",
 					Password: "hello@123",
 				}).Return(nil)
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `{
 				"email": "123@qq.com",
@@ -51,9 +51,9 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "绑定参数不对",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `
 				"email1ello@123nfirm_passwllo@123"
@@ -63,9 +63,9 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "邮箱格式不对",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `{
 				"email": "123",
@@ -77,9 +77,9 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "两次密码不匹配",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `{
 				"email": "123@qq.com",
@@ -91,9 +91,9 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "密码格式不对",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `{
 				"email": "123@qq.com",
@@ -105,13 +105,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "系统异常",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				usersvc.EXPECT().SignUp(gomock.Any(), domain.User{
 					Email:    "123@qq.com",
 					Password: "hello@123",
 				}).Return(errors.New("随便一个error"))
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `{
 				"email": "123@qq.com",
@@ -123,13 +123,13 @@ func TestUserHandler_SignUp(t *testing.T) {
 		},
 		{
 			name: "邮箱冲突",
-			mock: func(ctrl *gomock.Controller) service.UserService {
+			mock: func(ctrl *gomock.Controller) (service.UserService, service.CodeService) {
 				usersvc := svcmocks.NewMockUserService(ctrl)
 				usersvc.EXPECT().SignUp(gomock.Any(), domain.User{
 					Email:    "123@qq.com",
 					Password: "hello@123",
 				}).Return(service.ErrUserDuplicate)
-				return usersvc
+				return usersvc, nil
 			},
 			reqBody: `{
 				"email": "123@qq.com",
@@ -150,7 +150,8 @@ func TestUserHandler_SignUp(t *testing.T) {
 
 			server := gin.Default()
 			//创建模拟对象，并设置模拟调用
-			h := NewUserHandler(tc.mock(ctrl), nil)
+			userSvc, codeSvc := tc.mock(ctrl)
+			h := NewUserHandler(userSvc, codeSvc, nil)
 			h.RegisterRoutes(server)
 			//构造http请求
 			req, err := http.NewRequest(http.MethodPost, "/users/signup",
