@@ -1,15 +1,15 @@
 package ioc
 
 import (
-	"context"
 	"geektime/webook/internal/web"
 	jwt2 "geektime/webook/internal/web/jwt"
 	"geektime/webook/internal/web/middleware"
+	"geektime/webook/pkg/ginx/middlewares/metric"
 	"geektime/webook/pkg/logger"
-	"github.com/fsnotify/fsnotify"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+
 	"strings"
 	"time"
 )
@@ -27,13 +27,21 @@ func InitWebServer(mdls []gin.HandlerFunc,
 
 func InitMiddlewares(jwtHdl jwt2.JwtHandler, l logger.LoggerV1) []gin.HandlerFunc {
 	//web请求日志打印 配置
-	bd := middleware.NewLogMiddlewareBuilder(func(ctx context.Context, al *middleware.AccessLog) {
+	/*bd := middleware.NewLogMiddlewareBuilder(func(ctx context.Context, al *middleware.AccessLog) {
 		l.Debug("HTTP请求", logger.Field{Key: "al", Val: al})
 	}).AllowReqBody(true).AllowRespBody(true)
 	viper.OnConfigChange(func(in fsnotify.Event) {
 		ok := viper.GetBool("web.logreq")
 		bd.AllowReqBody(ok)
-	})
+	})*/
+	//使用promethus统计
+	pd := &metric.Builder{
+		Namespace:  "lll",
+		Subsystem:  "webook",
+		Name:       "gin_http",
+		Help:       "统计gin的http接口",
+		InstanceId: "my-instance-1",
+	}
 
 	return []gin.HandlerFunc{
 		//解决跨域问题
@@ -53,13 +61,24 @@ func InitMiddlewares(jwtHdl jwt2.JwtHandler, l logger.LoggerV1) []gin.HandlerFun
 				if strings.Contains(origin, "localhost") {
 					return true
 				}
+				if strings.Contains(origin, "192.168.83.1") {
+					return true
+				}
 				return strings.Contains(origin, "yourcompany.com")
 			},
 			//你的开发环境，包含localhost就允许访问
 			MaxAge: 12 * time.Hour,
 		}),
+
 		//日志打印请求和响应
-		bd.Build(),
+		//bd.Build(),
+
+		//使用promethus统计
+		pd.BuildResponseTime(),
+		pd.BuildActiveRequest(),
+		//使用OpenTelemetry自带的中间件
+		otelgin.Middleware("webook"),
+
 		//JWT中间件校验
 		//在校验中忽略某些路由
 		middleware.NewLoginJWTMiddlewareBuilder(jwtHdl).

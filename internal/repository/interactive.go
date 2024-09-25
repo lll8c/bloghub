@@ -130,7 +130,19 @@ func (c *CachedInteractiveRepository) IncrReadCnt(ctx context.Context, biz strin
 	return c.cache.IncrReadCntIfPresent(ctx, biz, bizId)
 }
 
-func (c *CachedInteractiveRepository) BatchIncrReadCnt(ctx context.Context, bizs []string, ids []int64) error {
+func (c *CachedInteractiveRepository) BatchIncrReadCnt(ctx context.Context, biz []string, bizId []int64) error {
+	err := c.dao.BatchIncrReadCnt(ctx, biz, bizId)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for i := 0; i < len(biz); i++ {
+			er := c.cache.IncrReadCntIfPresent(ctx, biz[i], bizId[i])
+			if er != nil {
+				// 记录日志
+			}
+		}
+	}()
 	return nil
 }
 

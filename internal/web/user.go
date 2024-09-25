@@ -3,6 +3,7 @@ package web
 import (
 	"fmt"
 	"geektime/webook/internal/domain"
+	"geektime/webook/internal/errs"
 	"geektime/webook/internal/service"
 	jwt2 "geektime/webook/internal/web/jwt"
 	"github.com/dlclark/regexp2"
@@ -217,7 +218,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	//调用service层
-	err := u.userSvc.SignUp(ctx, domain.User{
+	err := u.userSvc.SignUp(ctx.Request.Context(), domain.User{
 		Email:    req.Email,
 		Password: req.Password,
 	})
@@ -245,7 +246,10 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 	user, err := u.userSvc.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		if err == service.ErrInvalidUserOrPassword {
-			ctx.String(http.StatusOK, "用户不存在或密码不对")
+			ctx.JSON(http.StatusOK, Result{
+				Code: errs.UserInvalidOrPassword,
+				Msg:  "用户不存在或密码错误",
+			})
 		} else {
 			ctx.String(http.StatusOK, "系统异常")
 		}

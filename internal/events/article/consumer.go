@@ -2,6 +2,7 @@ package article
 
 import (
 	"context"
+	"fmt"
 	"geektime/webook/internal/repository"
 	"geektime/webook/pkg/logger"
 	"geektime/webook/pkg/samarax"
@@ -68,7 +69,11 @@ func (i *InteractiveReadEventConsumer) BatchConsume(msgs []*sarama.ConsumerMessa
 // Consume 消费处理函数
 func (i *InteractiveReadEventConsumer) Consume(msg *sarama.ConsumerMessage,
 	event ReadEvent) error {
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	return i.repo.IncrReadCnt(ctx, "article", event.Aid)
+	err := i.repo.IncrReadCnt(ctx, "article", event.Aid)
+	t := time.Since(start).String()
+	fmt.Println(t)
+	return err
 }

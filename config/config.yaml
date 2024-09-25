@@ -5,7 +5,7 @@ redis:
   addr: "localhost:6379"
 
 db:
-  dsn: "root:root@tcp(localhost:13317)/webook"
+  dsn: "root:root@tcp(localhost:13316)/webook"
 
 kafka:
   addr:

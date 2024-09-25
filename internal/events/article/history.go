@@ -2,10 +2,10 @@ package article
 
 import (
 	"context"
-	"gitee.com/geekbang/basic-go/webook/internal/domain"
-	"gitee.com/geekbang/basic-go/webook/internal/repository"
-	"gitee.com/geekbang/basic-go/webook/pkg/logger"
-	"gitee.com/geekbang/basic-go/webook/pkg/samarax"
+	"geektime/webook/internal/domain"
+	"geektime/webook/internal/repository"
+	"geektime/webook/pkg/logger"
+	"geektime/webook/pkg/samarax"
 	"github.com/IBM/sarama"
 	"time"
 )
@@ -23,7 +23,7 @@ func (i *HistoryRecordConsumer) Start() error {
 	}
 	go func() {
 		er := cg.Consume(context.Background(),
-			[]string{TopicReadEvent},
+			[]string{"article_read"},
 			samarax.NewHandler[ReadEvent](i.l, i.Consume))
 		if er != nil {
 			i.l.Error("退出消费", logger.Error(er))
