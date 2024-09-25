@@ -4,10 +4,8 @@ package startup
 
 import (
 	"geektime/webook/internal/repository"
-	"geektime/webook/internal/repository/article"
 	"geektime/webook/internal/repository/cache"
 	"geektime/webook/internal/repository/dao"
-	article2 "geektime/webook/internal/repository/dao/article"
 	"geektime/webook/internal/service"
 	"geektime/webook/internal/web"
 	jwt2 "geektime/webook/internal/web/jwt"
@@ -27,16 +25,32 @@ var userSvcProvider = wire.NewSet(
 	service.NewUserService)
 
 var articlSvcProvider = wire.NewSet(
-	article.NewArticleRepository,
+	repository.NewArticleRepository,
+	cache.NewArticleRedisCache,
+	dao.NewGROMArticleDAO,
 	service.NewArticleService)
 
-func InitArticleHandler(articleDao article2.ArticleDAO) *web.ArticleHandler {
+var interactiveSvcSet = wire.NewSet(dao.NewGORMInteractiveDAO,
+	cache.NewInteractiveRedisCache,
+	repository.NewCachedInteractiveRepository,
+	service.NewInteractiveService,
+)
+
+func InitArticleHandler(dao dao.ArticleDAO) *web.ArticleHandler {
 	wire.Build(
 		thirdPartySet,
-		article.NewArticleRepository,
+		userSvcProvider,
+		interactiveSvcSet,
+		repository.NewArticleRepository,
+		cache.NewArticleRedisCache,
 		service.NewArticleService,
 		web.NewArticleHandler)
 	return &web.ArticleHandler{}
+}
+
+func InitInteractiveService() service.InteractiveService {
+	wire.Build(thirdPartySet, interactiveSvcSet)
+	return service.NewInteractiveService(nil)
 }
 
 func InitWebServer() *gin.Engine {
@@ -45,17 +59,23 @@ func InitWebServer() *gin.Engine {
 		ioc.InitDB, ioc.InitRedis,
 		ioc.InitLoggerV1,
 		//dao
-		dao.NewUserDao, article2.NewGROMArticleDAO,
+		dao.NewUserDao,
+		dao.NewGROMArticleDAO,
+		dao.NewGORMInteractiveDAO,
 		//cache
 		cache.NewUserCache, cache.NewCodeCache,
+		cache.NewArticleRedisCache,
+		cache.NewInteractiveRedisCache,
 		//repository
 		repository.NewUserRepository, repository.NewCodeRepository,
-		article.NewArticleRepository,
+		repository.NewArticleRepository,
+		repository.NewCachedInteractiveRepository,
 		//service
 		ioc.InitSMSService,
 		ioc.InitWechatService,
 		service.NewCodeService, service.NewUserService,
 		service.NewArticleService,
+		service.NewInteractiveService,
 		//handler
 		jwt2.NewRedisJWTHandler,
 		web.NewUserHandler,

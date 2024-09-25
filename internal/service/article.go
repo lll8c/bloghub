@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"geektime/webook/internal/domain"
-	"geektime/webook/internal/repository/article"
+	event "geektime/webook/internal/events/article"
+	events "geektime/webook/internal/events/article"
+	repository2 "geektime/webook/internal/repository"
 	"geektime/webook/pkg/logger"
 )
 
@@ -12,23 +14,26 @@ type ArticleService interface {
 	Publish(ctx context.Context, art domain.Article) (int64, error)
 	PublishV1(ctx context.Context, art domain.Article) (int64, error)
 	Withdraw(ctx context.Context, art domain.Article) error
+
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
 	GetById(ctx context.Context, id int64) (domain.Article, error)
-	GetPubById(ctx context.Context, id int64) (domain.Article, error)
+	GetPubById(ctx context.Context, id int64, uid int64) (domain.Article, error)
 }
 
 type articleService struct {
-	repo article.ArticleRepository
+	repo repository2.ArticleRepository
 
-	author article.ArticleAuthorRepository
-	reader article.ArticleReaderRepository
-	l      logger.LoggerV1
+	author   repository2.ArticleAuthorRepository
+	reader   repository2.ArticleReaderRepository
+	l        logger.LoggerV1
+	producer events.Producer
 }
 
-func NewArticleService(repo article.ArticleRepository, l logger.LoggerV1) ArticleService {
+func NewArticleService(repo repository2.ArticleRepository, l logger.LoggerV1, producer event.Producer) ArticleService {
 	return &articleService{
-		repo: repo,
-		l:    l,
+		repo:     repo,
+		l:        l,
+		producer: producer,
 	}
 }
 
@@ -91,8 +96,21 @@ func (a *articleService) Withdraw(ctx context.Context, art domain.Article) error
 	return a.repo.SyncStatus(ctx, art.Id, art.Author.Id, domain.ArticleStatusPrivate)
 }
 
-func (a *articleService) GetPubById(ctx context.Context, id int64) (domain.Article, error) {
-	return a.repo.GetPubById(ctx, id)
+func (a *articleService) GetPubById(ctx context.Context, id int64, uid int64) (domain.Article, error) {
+	art, err := a.repo.GetPubById(ctx, id)
+	//向kafka发送已读消息
+	if err == nil {
+		go func() {
+			err2 := a.producer.ProduceReadEvent(ctx, event.ReadEvent{
+				Uid: uid,
+				Aid: id,
+			})
+			if err2 != nil {
+				a.l.Error("发送消息失败", logger.Error(err))
+			}
+		}()
+	}
+	return art, err
 }
 
 func (a *articleService) GetById(ctx context.Context, id int64) (domain.Article, error) {

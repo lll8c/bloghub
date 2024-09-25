@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"geektime/webook/internal/integration/startup"
-	dao "geektime/webook/internal/repository/dao/article"
+	dao2 "geektime/webook/internal/repository/dao"
 	jwt2 "geektime/webook/internal/web/jwt"
 	"github.com/bwmarrin/snowflake"
 	"github.com/gin-gonic/gin"
@@ -35,7 +35,7 @@ func (s *ArticleMongoDBTestSuite) SetupSuite() {
 	s.liveCol = s.mdb.Collection("published_articles")
 	node, err := snowflake.NewNode(1)
 	assert.NoError(s.T(), err)
-	hdl := startup.InitArticleHandler(dao.NewMongoDBArticleDAO(s.mdb, node))
+	hdl := startup.InitArticleHandler(dao2.NewMongoDBArticleDAO(s.mdb, node))
 
 	s.server = gin.Default()
 	//设置用户id
@@ -82,7 +82,7 @@ func (s *ArticleMongoDBTestSuite) TestEdit() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 你要验证，保存到了数据库里面
-				var art dao.Article
+				var art dao2.Article
 				err := s.col.FindOne(ctx,
 					bson.D{bson.E{"author_id", 123}}).
 					Decode(&art)
@@ -93,7 +93,7 @@ func (s *ArticleMongoDBTestSuite) TestEdit() {
 				art.Ctime = 0
 				art.Utime = 0
 				art.Id = 0
-				assert.Equal(t, dao.Article{
+				assert.Equal(t, dao2.Article{
 					Title:    "我的标题",
 					Content:  "我的内容",
 					AuthorId: 123,
@@ -116,7 +116,7 @@ func (s *ArticleMongoDBTestSuite) TestEdit() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 假装数据库已经有这个帖子
-				_, err := s.col.InsertOne(ctx, &dao.Article{
+				_, err := s.col.InsertOne(ctx, &dao2.Article{
 					Id:       11,
 					Title:    "我的标题",
 					Content:  "我的内容",
@@ -132,14 +132,14 @@ func (s *ArticleMongoDBTestSuite) TestEdit() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 你要验证，保存到了数据库里面
-				var art dao.Article
+				var art dao2.Article
 
 				err := s.col.FindOne(ctx, bson.D{bson.E{"id", 11}}).
 					Decode(&art)
 				assert.NoError(t, err)
 				assert.True(t, art.Utime > 789)
 				art.Utime = 0
-				assert.Equal(t, dao.Article{
+				assert.Equal(t, dao2.Article{
 					Id:       11,
 					Title:    "新的标题",
 					Content:  "新的内容",
@@ -166,7 +166,7 @@ func (s *ArticleMongoDBTestSuite) TestEdit() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 假装数据库已经有这个帖子
-				_, err := s.col.InsertOne(ctx, &dao.Article{
+				_, err := s.col.InsertOne(ctx, &dao2.Article{
 					Id:      22,
 					Title:   "我的标题",
 					Content: "我的内容",
@@ -182,11 +182,11 @@ func (s *ArticleMongoDBTestSuite) TestEdit() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 你要验证，保存到了数据库里面
-				var art dao.Article
+				var art dao2.Article
 				err := s.col.FindOne(ctx, bson.D{bson.E{"id", 22}}).
 					Decode(&art)
 				assert.NoError(t, err)
-				assert.Equal(t, dao.Article{
+				assert.Equal(t, dao2.Article{
 					Id:       22,
 					Title:    "我的标题",
 					Content:  "我的内容",
@@ -265,7 +265,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 验证一下数据
-				var art dao.Article
+				var art dao2.Article
 				err := s.col.FindOne(ctx,
 					bson.D{bson.E{"author_id", 123}}).
 					Decode(&art)
@@ -276,7 +276,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				assert.Equal(t, uint8(2), art.Status)
 				assert.True(t, art.Ctime > 0)
 				assert.True(t, art.Utime > 0)
-				var publishedArt dao.PublishArticle
+				var publishedArt dao2.PublishArticle
 				err = s.liveCol.FindOne(ctx,
 					bson.D{bson.E{"author_id", 123}}).
 					Decode(&publishedArt)
@@ -304,7 +304,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 模拟已经存在的帖子
-				_, err := s.col.InsertOne(ctx, &dao.Article{
+				_, err := s.col.InsertOne(ctx, &dao2.Article{
 					Id:       2,
 					Title:    "我的标题",
 					Content:  "我的内容",
@@ -319,7 +319,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 验证一下数据
-				var art dao.Article
+				var art dao2.Article
 				err := s.col.FindOne(ctx, bson.D{bson.E{"id", 2}}).Decode(&art)
 				assert.NoError(t, err)
 				assert.Equal(t, "新的标题", art.Title)
@@ -330,7 +330,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				assert.Equal(t, int64(456), art.Ctime)
 				// 更新时间变了
 				assert.True(t, art.Utime > 234)
-				var publishedArt dao.PublishArticle
+				var publishedArt dao2.PublishArticle
 				err = s.liveCol.FindOne(ctx, bson.D{bson.E{"id", 2}}).Decode(&publishedArt)
 				assert.NoError(t, err)
 				assert.Equal(t, "新的标题", art.Title)
@@ -355,7 +355,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 			before: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				art := dao.Article{
+				art := dao2.Article{
 					Id:       3,
 					Title:    "我的标题",
 					Content:  "我的内容",
@@ -366,14 +366,14 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				}
 				_, err := s.col.InsertOne(ctx, &art)
 				assert.NoError(t, err)
-				part := dao.PublishArticle(art)
+				part := dao2.PublishArticle(art)
 				_, err = s.liveCol.InsertOne(ctx, &part)
 				assert.NoError(t, err)
 			},
 			after: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				var art dao.Article
+				var art dao2.Article
 				err := s.col.FindOne(ctx, bson.D{bson.E{"id", 3}}).Decode(&art)
 				assert.NoError(t, err)
 				assert.Equal(t, "新的标题", art.Title)
@@ -385,7 +385,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				// 更新时间变了
 				assert.True(t, art.Utime > 234)
 
-				var part dao.PublishArticle
+				var part dao2.PublishArticle
 				err = s.liveCol.FindOne(ctx, bson.D{bson.E{"id", 3}}).Decode(&part)
 				assert.NoError(t, err)
 				assert.Equal(t, "新的标题", part.Title)
@@ -412,7 +412,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 			before: func(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
-				art := dao.Article{
+				art := dao2.Article{
 					Id:      4,
 					Title:   "我的标题",
 					Content: "我的内容",
@@ -424,7 +424,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				}
 				_, err := s.col.InsertOne(ctx, &art)
 				assert.NoError(t, err)
-				part := dao.PublishArticle(dao.Article{
+				part := dao2.PublishArticle(dao2.Article{
 					Id:       4,
 					Title:    "我的标题",
 					Content:  "我的内容",
@@ -440,7 +440,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 				defer cancel()
 				// 更新应该是失败了，数据没有发生变化
-				var art dao.Article
+				var art dao2.Article
 				err := s.col.FindOne(ctx, bson.D{bson.E{"id", 4}}).Decode(&art)
 				assert.NoError(t, err)
 				assert.Equal(t, "我的标题", art.Title)
@@ -450,7 +450,7 @@ func (s *ArticleMongoDBTestSuite) TestArticle_Publish() {
 				assert.Equal(t, uint8(1), art.Status)
 				assert.Equal(t, int64(789), art.AuthorId)
 
-				var part dao.PublishArticle
+				var part dao2.PublishArticle
 				// 数据没有变化
 				err = s.liveCol.FindOne(ctx, bson.D{bson.E{"id", 4}}).Decode(&part)
 				assert.NoError(t, err)

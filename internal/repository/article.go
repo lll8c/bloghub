@@ -1,11 +1,10 @@
-package article
+package repository
 
 import (
 	"context"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/repository/cache"
 	"geektime/webook/internal/repository/dao"
-	articleDao "geektime/webook/internal/repository/dao/article"
 	"geektime/webook/pkg/logger"
 	"github.com/ecodeclub/ekit/slice"
 	"time"
@@ -26,16 +25,16 @@ type ArticleRepository interface {
 }
 
 type articleRepository struct {
-	dao       articleDao.ArticleDAO
-	readerDao articleDao.ReaderDao
-	authorDao articleDao.AuthorDao
+	dao       dao.ArticleDAO
+	readerDao dao.ReaderDao
+	authorDao dao.AuthorDao
 	userDao   dao.UserDAO
 
 	cache cache.ArticleCache
 	l     logger.LoggerV1
 }
 
-func NewArticleRepository(dao articleDao.ArticleDAO, cache cache.ArticleCache, l logger.LoggerV1, userDao dao.UserDAO) ArticleRepository {
+func NewArticleRepository(dao dao.ArticleDAO, cache cache.ArticleCache, l logger.LoggerV1, userDao dao.UserDAO) ArticleRepository {
 	return &articleRepository{
 		dao:     dao,
 		cache:   cache,
@@ -122,7 +121,7 @@ func (c *articleRepository) GetPubById(ctx context.Context, id int64) (domain.Ar
 		return domain.Article{}, err
 	}
 	// 我现在要去查询对应的 User 信息，拿到创作者信息
-	res = c.toDomain(articleDao.Article(art))
+	res = c.toDomain(dao.Article(art))
 	author, err := c.userDao.FindById(ctx, art.AuthorId)
 	if err != nil {
 		c.l.Error("获取用户信息失败", logger.Error(err))
@@ -181,7 +180,7 @@ func (c *articleRepository) GetByAuthor(ctx context.Context, uid int64, offset i
 	if err != nil {
 		return nil, err
 	}
-	res := slice.Map[articleDao.Article, domain.Article](arts, func(idx int, src articleDao.Article) domain.Article {
+	res := slice.Map[dao.Article, domain.Article](arts, func(idx int, src dao.Article) domain.Article {
 		return c.toDomain(src)
 	})
 
@@ -216,8 +215,8 @@ func (c *articleRepository) preCache(ctx context.Context, arts []domain.Article)
 	}
 }
 
-func (c *articleRepository) ToEntity(art domain.Article) articleDao.Article {
-	return articleDao.Article{
+func (c *articleRepository) ToEntity(art domain.Article) dao.Article {
+	return dao.Article{
 		Id:       art.Id,
 		Title:    art.Title,
 		Content:  art.Content,
@@ -227,7 +226,7 @@ func (c *articleRepository) ToEntity(art domain.Article) articleDao.Article {
 	}
 }
 
-func (c *articleRepository) toDomain(art articleDao.Article) domain.Article {
+func (c *articleRepository) toDomain(art dao.Article) domain.Article {
 	return domain.Article{
 		Id:      art.Id,
 		Title:   art.Title,

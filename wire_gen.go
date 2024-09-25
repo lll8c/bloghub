@@ -7,6 +7,7 @@
 package main
 
 import (
+	"geektime/webook/internal/events/article"
 	"geektime/webook/internal/repository"
 	"geektime/webook/internal/repository/cache"
 	"geektime/webook/internal/repository/dao"
@@ -14,7 +15,6 @@ import (
 	"geektime/webook/internal/web"
 	"geektime/webook/internal/web/jwt"
 	"geektime/webook/ioc"
-	"github.com/gin-gonic/gin"
 )
 
 import (
@@ -23,10 +23,10 @@ import (
 
 // Injectors from wire.go:
 
-func InitWebServer() *gin.Engine {
+func InitApp() *App {
 	cmdable := ioc.InitRedis()
 	jwtHandler := jwt.NewRedisJWTHandler(cmdable)
-	loggerV1 := initLoggerV1()
+	loggerV1 := ioc.InitLoggerV1()
 	v := ioc.InitMiddlewares(jwtHandler, loggerV1)
 	db := ioc.InitDB(loggerV1)
 	userDAO := dao.NewUserDao(db)
@@ -40,6 +40,24 @@ func InitWebServer() *gin.Engine {
 	userHandler := web.NewUserHandler(userService, codeService, jwtHandler)
 	wechatService := ioc.InitWechatService()
 	oAuth2WechatHandler := web.NewOAuth2WechatHandler(wechatService, userService, jwtHandler)
-	engine := ioc.InitWebServer(v, userHandler, oAuth2WechatHandler)
-	return engine
+	articleDAO := dao.NewGROMArticleDAO(db)
+	articleCache := cache.NewArticleRedisCache(cmdable)
+	articleRepository := repository.NewArticleRepository(articleDAO, articleCache, loggerV1, userDAO)
+	client := ioc.InitSaramaClient()
+	syncProducer := ioc.InitSyncProducer(client)
+	producer := article.NewKafkaProducer(syncProducer)
+	articleService := service.NewArticleService(articleRepository, loggerV1, producer)
+	interactiveDAO := dao.NewGORMInteractiveDAO(db)
+	interactiveCache := cache.NewInteractiveRedisCache(cmdable)
+	interactiveRepository := repository.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
+	interactiveService := service.NewInteractiveService(interactiveRepository)
+	articleHandler := web.NewArticleHandler(articleService, loggerV1, interactiveService)
+	engine := ioc.InitWebServer(v, userHandler, oAuth2WechatHandler, articleHandler)
+	interactiveReadEventConsumer := article.NewInteractiveReadEventConsumer(interactiveRepository, client, loggerV1)
+	v2 := ioc.InitConsumers(interactiveReadEventConsumer)
+	app := &App{
+		server:    engine,
+		consumers: v2,
+	}
+	return app
 }

@@ -20,6 +20,21 @@ type MongoDBArticleDAO struct {
 	liveCol *mongo.Collection
 }
 
+func (m *MongoDBArticleDAO) GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]Article, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MongoDBArticleDAO) GetById(ctx context.Context, id int64) (Article, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (m *MongoDBArticleDAO) GetPubById(ctx context.Context, id int64) (PublishArticle, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ ArticleDAO = &MongoDBArticleDAO{}
 
 func NewMongoDBArticleDAO(mdb *mongo.Database, node *snowflake.Node) ArticleDAO {

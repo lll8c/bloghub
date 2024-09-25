@@ -2,7 +2,6 @@ package dao
 
 import (
 	"context"
-	dao "geektime/webook/internal/repository/dao/article"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -11,7 +10,14 @@ import (
 )
 
 func InitTables(db *gorm.DB) error {
-	return db.AutoMigrate(&User{}, &dao.Article{}, &dao.PublishArticle{})
+	return db.AutoMigrate(
+		&User{},
+		&Article{},
+		&PublishArticle{},
+		&Interactive{},
+		&UserLikeBiz{},
+		&UserCollectionBiz{},
+	)
 }
 
 func InitCollection(mdb *mongo.Database) error {

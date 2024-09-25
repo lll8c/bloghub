@@ -13,11 +13,11 @@ import (
 
 func main() {
 	initViper()
-	r := InitWebServer()
-	r.GET("/hello", func(ctx *gin.Context) {
+	app := InitApp()
+	app.server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello")
 	})
-	r.Run(":8080")
+	app.server.Run(":8080")
 }
 
 // 要先启动etcd容器

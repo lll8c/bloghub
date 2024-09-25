@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/integration/startup"
-	dao "geektime/webook/internal/repository/dao/article"
+	"geektime/webook/internal/repository/dao"
 	jwt2 "geektime/webook/internal/web/jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

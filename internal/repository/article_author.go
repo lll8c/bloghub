@@ -1,9 +1,9 @@
-package article
+package repository
 
 import (
 	"context"
 	"geektime/webook/internal/domain"
-	dao "geektime/webook/internal/repository/dao/article"
+	"geektime/webook/internal/repository/dao"
 )
 
 type ArticleAuthorRepository interface {

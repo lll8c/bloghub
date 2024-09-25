@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"geektime/webook/internal/domain"
-	"geektime/webook/internal/repository/article"
+	repository2 "geektime/webook/internal/repository"
 	repomocks "geektime/webook/internal/repository/article/mocks"
 	"geektime/webook/pkg/logger"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +15,7 @@ import (
 func Test_articleService_PublishV1(t *testing.T) {
 	testCases := []struct {
 		name string
-		mock func(ctrl *gomock.Controller) (article.ArticleReaderRepository, article.ArticleAuthorRepository)
+		mock func(ctrl *gomock.Controller) (repository2.ArticleReaderRepository, repository2.ArticleAuthorRepository)
 		art  domain.Article
 
 		wantErr error
@@ -23,7 +23,7 @@ func Test_articleService_PublishV1(t *testing.T) {
 	}{
 		{
 			name: "新建发表成功",
-			mock: func(ctrl *gomock.Controller) (article.ArticleReaderRepository, article.ArticleAuthorRepository) {
+			mock: func(ctrl *gomock.Controller) (repository2.ArticleReaderRepository, repository2.ArticleAuthorRepository) {
 				author := repomocks.NewMockArticleAuthorRepository(ctrl)
 				author.EXPECT().Create(gomock.Any(), domain.Article{
 					Title:   "我的标题",
@@ -54,7 +54,7 @@ func Test_articleService_PublishV1(t *testing.T) {
 		},
 		{
 			name: "修改并发表成功",
-			mock: func(ctrl *gomock.Controller) (article.ArticleReaderRepository, article.ArticleAuthorRepository) {
+			mock: func(ctrl *gomock.Controller) (repository2.ArticleReaderRepository, repository2.ArticleAuthorRepository) {
 				author := repomocks.NewMockArticleAuthorRepository(ctrl)
 				author.EXPECT().Update(gomock.Any(), domain.Article{
 					Id:      2,
@@ -87,7 +87,7 @@ func Test_articleService_PublishV1(t *testing.T) {
 		},
 		{
 			name: "保存到制作库成功，但保存到线上库失败",
-			mock: func(ctrl *gomock.Controller) (article.ArticleReaderRepository, article.ArticleAuthorRepository) {
+			mock: func(ctrl *gomock.Controller) (repository2.ArticleReaderRepository, repository2.ArticleAuthorRepository) {
 				author := repomocks.NewMockArticleAuthorRepository(ctrl)
 				author.EXPECT().Update(gomock.Any(), domain.Article{
 					Id:      2,
@@ -121,7 +121,7 @@ func Test_articleService_PublishV1(t *testing.T) {
 		},
 		{
 			name: "保存到制作库失败",
-			mock: func(ctrl *gomock.Controller) (article.ArticleReaderRepository, article.ArticleAuthorRepository) {
+			mock: func(ctrl *gomock.Controller) (repository2.ArticleReaderRepository, repository2.ArticleAuthorRepository) {
 				author := repomocks.NewMockArticleAuthorRepository(ctrl)
 				author.EXPECT().Update(gomock.Any(), domain.Article{
 					Id:      2,
