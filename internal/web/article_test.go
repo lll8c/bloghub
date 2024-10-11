@@ -9,6 +9,7 @@ import (
 	svcmocks "geektime/webook/internal/service/mocks"
 	jwt2 "geektime/webook/internal/web/jwt"
 	"geektime/webook/pkg/logger"
+	"geektime/webook/pkg/migrator/scheduler"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -24,7 +25,7 @@ func TestArticleHandler_Publish(t *testing.T) {
 
 		reqBody  string
 		wantCode int
-		wantRes  Result
+		wantRes  scheduler.Result
 	}{
 		{
 			name: "新建并且发表成功",
@@ -46,7 +47,7 @@ func TestArticleHandler_Publish(t *testing.T) {
 				}
 				`,
 			wantCode: 200,
-			wantRes: Result{
+			wantRes: scheduler.Result{
 				// 原本是 int64的，但是因为 Data 是any，所以在反序列化的时候，
 				// 用的 float64
 				Msg:  "Ok",
@@ -73,7 +74,7 @@ func TestArticleHandler_Publish(t *testing.T) {
 				}
 				`,
 			200,
-			Result{
+			scheduler.Result{
 				// 原本是 int64的，但是因为 Data 是any，所以在反序列化的时候，
 				// 用的 float64
 				Msg:  "Ok",
@@ -113,7 +114,7 @@ func TestArticleHandler_Publish(t *testing.T) {
 			if recorder.Code != http.StatusOK {
 				return
 			}
-			var res Result
+			var res scheduler.Result
 			err = json.NewDecoder(recorder.Body).Decode(&res)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.wantRes, res)

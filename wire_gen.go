@@ -15,6 +15,7 @@ import (
 	"geektime/webook/internal/web"
 	"geektime/webook/internal/web/jwt"
 	"geektime/webook/ioc"
+	"github.com/google/wire"
 )
 
 import (
@@ -43,21 +44,27 @@ func InitApp() *App {
 	articleDAO := dao.NewGROMArticleDAO(db)
 	articleCache := cache.NewArticleRedisCache(cmdable)
 	articleRepository := repository.NewArticleRepository(articleDAO, articleCache, loggerV1, userDAO)
-	client := ioc.InitSaramaClient()
+	client := ioc.InitKafkaClient()
 	syncProducer := ioc.InitSyncProducer(client)
 	producer := article.NewKafkaProducer(syncProducer)
 	articleService := service.NewArticleService(articleRepository, loggerV1, producer)
-	interactiveDAO := dao.NewGORMInteractiveDAO(db)
-	interactiveCache := cache.NewInteractiveRedisCache(cmdable)
-	interactiveRepository := repository.NewCachedInteractiveRepository(interactiveDAO, loggerV1, interactiveCache)
-	interactiveService := service.NewInteractiveService(interactiveRepository)
-	articleHandler := web.NewArticleHandler(articleService, loggerV1, interactiveService)
+	clientv3Client := ioc.InitEtcd()
+	interactiveServiceClient := ioc.InitIntrGRPCClientV1(clientv3Client)
+	articleHandler := web.NewArticleHandler(articleService, loggerV1, interactiveServiceClient)
 	engine := ioc.InitWebServer(v, userHandler, oAuth2WechatHandler, articleHandler)
-	interactiveReadEventConsumer := article.NewInteractiveReadEventConsumer(interactiveRepository, client, loggerV1)
-	v2 := ioc.InitConsumers(interactiveReadEventConsumer)
+	rankingCache := cache.NewRankingRedisCache(cmdable)
+	rankingRepository := repository.NewCachedRankingRepository(rankingCache)
+	rankingService := service.NewBatchRankingService(rankingRepository, articleService, interactiveServiceClient)
+	rlockClient := ioc.InitRlockClient(cmdable)
+	rankingJob := ioc.InitRankingJob(rankingService, loggerV1, rlockClient)
+	cron := ioc.InitJobs(loggerV1, rankingJob)
 	app := &App{
-		server:    engine,
-		consumers: v2,
+		server: engine,
+		cron:   cron,
 	}
 	return app
 }
+
+// wire.go:
+
+var rankingSvcSet = wire.NewSet(cache.NewRankingRedisCache, repository.NewCachedRankingRepository, service.NewBatchRankingService)

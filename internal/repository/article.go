@@ -19,6 +19,7 @@ type ArticleRepository interface {
 	SyncStatus(ctx context.Context, artId int64, authorId int64, status int) error
 
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
+	ListPub(ctx context.Context, start time.Time, offset int, limit int) ([]domain.Article, error)
 	GetById(ctx context.Context, id int64) (domain.Article, error)
 	GetPubById(ctx context.Context, id int64) (domain.Article, error)
 	preCache(ctx context.Context, arts []domain.Article)
@@ -42,14 +43,25 @@ func NewArticleRepository(dao dao.ArticleDAO, cache cache.ArticleCache, l logger
 		userDao: userDao,
 	}
 }
+func (c *articleRepository) ListPub(ctx context.Context, start time.Time, offset int, limit int) ([]domain.Article, error) {
+	arts, err := c.dao.ListPub(ctx, start, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return slice.Map[dao.PublishArticle, domain.Article](arts,
+		func(idx int, src dao.PublishArticle) domain.Article {
+			return c.toDomain(dao.Article(src))
+		}), nil
+}
 
 func (c *articleRepository) Sync(ctx context.Context, art domain.Article) (int64, error) {
-	//清空缓存，提前缓存好线上库数据
+	//发表可能会更新制作库，清空用户文章第一页缓存
 	err := c.cache.DelFirstPage(ctx, art.Author.Id)
 	if err != nil {
 		c.l.Error("删除缓存失败", logger.Int64("authorId", art.Author.Id))
 		return 0, err
 	}
+	//缓存发表文章
 	err = c.cache.SetPub(ctx, art)
 	if err != nil {
 		c.l.Error("缓存线上库数据失败", logger.Int64("authorId", art.Author.Id))
@@ -90,7 +102,7 @@ func (c *articleRepository) SyncStatus(ctx context.Context, artId int64, authorI
 }
 
 func (c *articleRepository) Create(ctx context.Context, art domain.Article) (int64, error) {
-	//清空缓存
+	//清空用户文章第一页缓存
 	err := c.cache.DelFirstPage(ctx, art.Author.Id)
 	if err != nil {
 		c.l.Error("删除缓存失败", logger.Int64("authorId", art.Author.Id))
@@ -140,6 +152,7 @@ func (c *articleRepository) GetPubById(ctx context.Context, id int64) (domain.Ar
 	return res, nil
 }
 
+// GetById 查询用户帖子列表后，点击查询帖子详情
 func (c *articleRepository) GetById(ctx context.Context, id int64) (domain.Article, error) {
 	//查询缓存
 	res, err := c.cache.Get(ctx, id)

@@ -1,6 +1,7 @@
 package web
 
 import (
+	intrv1 "geektime/webook/api/proto/gen/intr/v1"
 	"geektime/webook/internal/domain"
 	"geektime/webook/internal/service"
 	jwt2 "geektime/webook/internal/web/jwt"
@@ -15,11 +16,11 @@ import (
 type ArticleHandler struct {
 	svc     service.ArticleService
 	l       logger.LoggerV1
-	intrSvc service.InteractiveService
+	intrSvc intrv1.InteractiveServiceClient
 	biz     string
 }
 
-func NewArticleHandler(articleSvc service.ArticleService, l logger.LoggerV1, intrSvc service.InteractiveService) *ArticleHandler {
+func NewArticleHandler(articleSvc service.ArticleService, l logger.LoggerV1, intrSvc intrv1.InteractiveServiceClient) *ArticleHandler {
 	return &ArticleHandler{
 		svc:     articleSvc,
 		l:       l,
@@ -280,12 +281,18 @@ func (h *ArticleHandler) PubDetail(ctx *gin.Context) {
 			Code: 5,
 		})
 		h.l.Error("查询文章失败，系统错误",
-			logger.Error(err))
+			logger.Error(err),
+			logger.Int64("id", id),
+			logger.Int64("uid", uc.Uid))
 		return
 	}
 
 	//获取这篇文章的所有计数
-	intr, err := h.intrSvc.Get(ctx, h.biz, id, uc.Uid)
+	resp, err := h.intrSvc.Get(ctx, &intrv1.GetRequest{
+		Biz:   h.biz,
+		BizId: id,
+		Uid:   uc.Uid,
+	})
 	if err != nil {
 		//这个地方可以容忍错误
 		/*ctx.JSON(http.StatusOK, Result{
@@ -307,6 +314,7 @@ func (h *ArticleHandler) PubDetail(ctx *gin.Context) {
 				logger.Error(err))
 		}
 	}()*/
+	intr := resp.Intr
 	ctx.JSON(http.StatusOK, Result{
 		Data: ArticleVo{
 			Id:    art.Id,
@@ -345,10 +353,18 @@ func (h *ArticleHandler) Like(c *gin.Context) {
 	var err error
 	if req.Like {
 		// 点赞
-		err = h.intrSvc.Like(c, h.biz, req.Id, uc.Uid)
+		_, err = h.intrSvc.Like(c, &intrv1.LikeRequest{
+			Biz:   h.biz,
+			BizId: req.Id,
+			Uid:   uc.Uid,
+		})
 	} else {
 		// 取消点赞
-		err = h.intrSvc.CancelLike(c, h.biz, req.Id, uc.Uid)
+		_, err = h.intrSvc.CancelLike(c, &intrv1.CancelLikeRequest{
+			Biz:   h.biz,
+			BizId: req.Id,
+			Uid:   uc.Uid,
+		})
 	}
 	if err != nil {
 		c.JSON(http.StatusOK, Result{
@@ -376,7 +392,12 @@ func (h *ArticleHandler) Collect(ctx *gin.Context) {
 	}
 	uc := ctx.MustGet("claims").(*jwt2.UserClaims)
 
-	err := h.intrSvc.Collect(ctx, h.biz, req.Id, req.Cid, uc.Uid)
+	_, err := h.intrSvc.Collect(ctx, &intrv1.CollectRequest{
+		Biz:   h.biz,
+		BizId: req.Id,
+		Cid:   req.Cid,
+		Uid:   uc.Uid,
+	})
 	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5, Msg: "系统错误",

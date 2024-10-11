@@ -7,6 +7,7 @@ import (
 	events "geektime/webook/internal/events/article"
 	repository2 "geektime/webook/internal/repository"
 	"geektime/webook/pkg/logger"
+	"time"
 )
 
 type ArticleService interface {
@@ -14,8 +15,9 @@ type ArticleService interface {
 	Publish(ctx context.Context, art domain.Article) (int64, error)
 	PublishV1(ctx context.Context, art domain.Article) (int64, error)
 	Withdraw(ctx context.Context, art domain.Article) error
-
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]domain.Article, error)
+	// ListPub 只取7天内的数据
+	ListPub(ctx context.Context, start time.Time, offset int, limit int) ([]domain.Article, error)
 	GetById(ctx context.Context, id int64) (domain.Article, error)
 	GetPubById(ctx context.Context, id int64, uid int64) (domain.Article, error)
 }
@@ -37,6 +39,11 @@ func NewArticleService(repo repository2.ArticleRepository, l logger.LoggerV1, pr
 	}
 }
 
+// ListPub 获取7天内已发表的指定一批文章
+func (a *articleService) ListPub(ctx context.Context, start time.Time, offset int, limit int) ([]domain.Article, error) {
+	return a.repo.ListPub(ctx, start, offset, limit)
+}
+
 // Save 修改或者创建帖子，保存
 func (a *articleService) Save(ctx context.Context, art domain.Article) (int64, error) {
 	//将帖子的状态设置为未发表
@@ -53,7 +60,7 @@ func (a *articleService) Publish(ctx context.Context, art domain.Article) (int64
 	return a.repo.Sync(ctx, art)
 }
 
-// PublishV1 依靠连个不同repository来完成
+// PublishV1 依靠两个个不同repository来完成
 func (a *articleService) PublishV1(ctx context.Context, art domain.Article) (int64, error) {
 	var (
 		id  = art.Id

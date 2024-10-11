@@ -193,7 +193,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	type SignUpReq struct {
 		Email           string `json:"email,omitempty"`
 		Password        string `json:"password,omitempty"`
-		ConfirmPassword string `json:"confirm_password,omitempty"`
+		ConfirmPassword string `json:"confirmPassword,omitempty"`
 	}
 	var req SignUpReq
 	//Bind方法根据Content-Type来解析数据到req里面

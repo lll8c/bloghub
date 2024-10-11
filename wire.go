@@ -14,30 +14,35 @@ import (
 	"github.com/google/wire"
 )
 
+var rankingSvcSet = wire.NewSet(
+	cache.NewRankingRedisCache,
+	repository.NewCachedRankingRepository,
+	service.NewBatchRankingService,
+)
+
 func InitApp() *App {
 	wire.Build(
 		//第三方依赖
 		ioc.InitDB, ioc.InitRedis,
 		ioc.InitLoggerV1,
-
+		ioc.InitRlockClient,
 		//dao
 		dao.NewUserDao,
 		dao.NewGROMArticleDAO,
-		dao.NewGORMInteractiveDAO,
 		//cache
 		cache.NewUserCache, cache.NewCodeCache,
 		cache.NewArticleRedisCache,
-		cache.NewInteractiveRedisCache,
 		//repository
 		repository.NewUserRepository, repository.NewCodeRepository,
 		repository.NewArticleRepository,
-		repository.NewCachedInteractiveRepository,
 		//service
 		ioc.InitSMSService,
 		ioc.InitWechatService,
 		service.NewCodeService, service.NewUserService,
 		service.NewArticleService,
-		service.NewInteractiveService,
+		//GRPC client
+		ioc.InitEtcd,
+		ioc.InitIntrGRPCClientV1,
 		//handler
 		jwt2.NewRedisJWTHandler,
 		web.NewUserHandler,
@@ -45,12 +50,15 @@ func InitApp() *App {
 		web.NewArticleHandler,
 		ioc.InitMiddlewares,
 		ioc.InitWebServer,
+		//job
+		rankingSvcSet,
+		ioc.InitRankingJob,
+		ioc.InitJobs,
 		//kafka, consumer and producer
-		ioc.InitSaramaClient,
+		ioc.InitKafkaClient,
 		ioc.InitSyncProducer,
 		events.NewKafkaProducer,
-		events.NewInteractiveReadEventConsumer,
-		ioc.InitConsumers,
+
 		//组装App结构体的所有字段
 		wire.Struct(new(App), "*"),
 	)

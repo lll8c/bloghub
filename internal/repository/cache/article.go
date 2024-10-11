@@ -79,6 +79,7 @@ func (a *ArticleRedisCache) GetFirstPage(ctx context.Context, uid int64) ([]doma
 	return res, err
 }
 
+// SetFirstPage 设置用户文章第一页缓存
 func (a *ArticleRedisCache) SetFirstPage(ctx context.Context, uid int64, arts []domain.Article) error {
 	//只需缓存摘要
 	for i := 0; i < len(arts); i++ {

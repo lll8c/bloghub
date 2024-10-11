@@ -14,8 +14,12 @@ import (
 	"time"
 )
 
-func InitWebServer(mdls []gin.HandlerFunc,
-	userHandler *web.UserHandler, wechatHandler *web.OAuth2WechatHandler, articleHandler *web.ArticleHandler) *gin.Engine {
+func InitWebServer(
+	mdls []gin.HandlerFunc,
+	userHandler *web.UserHandler,
+	wechatHandler *web.OAuth2WechatHandler,
+	articleHandler *web.ArticleHandler) *gin.Engine {
+
 	r := gin.Default()
 	r.Use(mdls...)
 	//注册用户路由

@@ -30,18 +30,17 @@ services:
 #    ports:
 #      - 27017:27017
 
-#  etcd:
-#    image: "docker.m.daocloud.io/bitnami/etcd:latest"
-#    restart: always
-#    entrypoint:
-#      - ALLOW_NON_AUTHENTICATION=yes
-#    ports:
-#      - 12379:2379
+  etcd:
+    image: "m.daocloud.io/docker.io/bitnami/etcd:3.5.9"
+    restart: always
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    ports:
+      - 12379:2379
 
   kafka:
     image: 'm.daocloud.io/docker.io/bitnami/kafka:latest'
     ports:
-      - '9092:9092'
       - '9094:9094'
     environment:
       - KAFKA_CFG_NODE_ID=0
@@ -67,7 +66,8 @@ services:
 #    image: m.daocloud.io/docker.io/openzipkin/zipkin-slim:2.24
 #    ports:
 #      - '9411:9411'
-  grafana:
-    image: m.daocloud.io/docker.io/grafana/grafana-enterprise:10.2.0
-    ports:
-      - 3000:3000
+
+#  grafana:
+#    image: m.daocloud.io/docker.io/grafana/grafana-enterprise:10.2.0
+#    ports:
+#      - 3000:3000

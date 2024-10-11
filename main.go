@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"geektime/webook/ioc"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -12,7 +10,6 @@ import (
 	_ "github.com/spf13/viper/remote"
 	"go.uber.org/zap"
 	"net/http"
-	"time"
 )
 
 func main() {
@@ -20,24 +17,30 @@ func main() {
 	initViper()
 	app := InitApp()
 	//初始化openTelemetry
-	tpCancel := ioc.InitOTEL()
+	//tpCancel := ioc.InitOTEL()
+	//defer func() {
+	//	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	//	defer cancel()
+	//	tpCancel(ctx)
+	//}()
+	////启动kafka消费者
+	//for _, c := range app.consumers {
+	//	err := c.StartV1()
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//}
+	//启动定时job
+	app.cron.Start()
 	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		tpCancel(ctx)
+		// 等待定时任务退出
+		<-app.cron.Stop().Done()
 	}()
-	//启动kafka消费者
-	for _, c := range app.consumers {
-		err := c.StartV1()
-		if err != nil {
-			panic(err)
-		}
-	}
 
 	app.server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "hello")
 	})
-	app.server.Run("192.168.83.1:8080")
+	app.server.Run(":8080")
 }
 
 // 初始化prometheus
@@ -45,7 +48,7 @@ func initPrometheus() {
 	go func() {
 		// 专门给 prometheus 用的端口
 		http.Handle("/metrics", promhttp.Handler())
-		http.ListenAndServe("192.168.83.1:8081", nil)
+		http.ListenAndServe(":8081", nil)
 	}()
 }
 

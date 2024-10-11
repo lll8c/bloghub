@@ -19,6 +19,7 @@ type ArticleDAO interface {
 	GetByAuthor(ctx context.Context, uid int64, offset int, limit int) ([]Article, error)
 	GetById(ctx context.Context, id int64) (Article, error)
 	GetPubById(ctx context.Context, id int64) (PublishArticle, error)
+	ListPub(ctx context.Context, start time.Time, offset int, limit int) ([]PublishArticle, error)
 }
 
 type GROMArticleDAO struct {
@@ -29,6 +30,17 @@ func NewGROMArticleDAO(db *gorm.DB) ArticleDAO {
 	return &GROMArticleDAO{
 		db: db,
 	}
+}
+
+// ListPub 获取7天内已发表的文章
+func (a *GROMArticleDAO) ListPub(ctx context.Context, start time.Time, offset int, limit int) ([]PublishArticle, error) {
+	var res []PublishArticle
+	const ArticleStatusPublished = 2
+	err := a.db.WithContext(ctx).
+		Where("utime < ? AND status = ?", start.UnixMilli(), ArticleStatusPublished).
+		Order("utime DESC").Offset(offset).Limit(limit).
+		Find(&res).Error
+	return res, err
 }
 
 // SyncStatus 更新帖子状态
@@ -69,6 +81,7 @@ func (g *GROMArticleDAO) Sync(ctx context.Context, art Article) (int64, error) {
 	)
 	err = g.db.Transaction(func(tx *gorm.DB) error {
 		txDAO := NewGROMArticleDAO(tx)
+		//操作制作库
 		if art.Id > 0 {
 			err = txDAO.Update(ctx, art)
 		} else {
@@ -84,7 +97,7 @@ func (g *GROMArticleDAO) Sync(ctx context.Context, art Article) (int64, error) {
 	return id, err
 }
 
-// Upsert 插入或删除
+// Upsert 插入或修改线上库
 func (g *GROMArticleDAO) Upsert(ctx context.Context, art PublishArticle) error {
 	now := time.Now().UnixMilli()
 	art.Ctime = now
@@ -102,6 +115,7 @@ func (g *GROMArticleDAO) Upsert(ctx context.Context, art PublishArticle) error {
 	return nil
 }
 
+// Insert 插入制作库
 func (g *GROMArticleDAO) Insert(ctx context.Context, art Article) (int64, error) {
 	now := time.Now().UnixMilli()
 	art.Ctime = now
@@ -110,6 +124,7 @@ func (g *GROMArticleDAO) Insert(ctx context.Context, art Article) (int64, error)
 	return art.Id, err
 }
 
+// Update 更新制作库
 func (g *GROMArticleDAO) Update(ctx context.Context, art Article) error {
 	now := time.Now().UnixMilli()
 	art.Utime = now

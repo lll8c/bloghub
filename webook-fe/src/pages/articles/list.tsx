@@ -1,4 +1,3 @@
-'use client';
 import {EditOutlined} from '@ant-design/icons';
 import {ProLayout, ProList} from '@ant-design/pro-components';
 import {Button, Tag} from 'antd';
@@ -20,6 +19,23 @@ interface ArticleItem {
     abstract: string
 }
 
+const dataSource = [
+    {
+        title: '语雀的天空',
+        status: 1,
+        content: "hello, world"
+    },
+    {
+        title: 'Ant Design',
+    },
+    {
+        title: '蚂蚁金服体验科技',
+    },
+    {
+        title: 'TechUI',
+    },
+];
+
 const ArticleList = () => {
     const [data, setData] = useState<Array<ArticleItem>>([])
     const [loading, setLoading] = useState<boolean>()
@@ -34,6 +50,7 @@ const ArticleList = () => {
                 setLoading(false)
             })
     }, [])
+
     return (
         <ProLayout title={"创作中心"}>
             <ProList<ArticleItem>
@@ -59,15 +76,21 @@ const ArticleList = () => {
                             switch (record.status) {
                                 case 1:
                                     return (
-                                        <Tag color={"processing"}>未发表</Tag>
+                                        <>
+                                            <Tag color={"processing"}>未发表</Tag>
+                                        </>
                                     )
                                 case 2:
                                     return (
-                                        <Tag color={"success"}  >已发表</Tag>
+                                        <>
+                                            <Tag color={"success"}  >已发表</Tag>
+                                        </>
                                     )
                                 case 3:
                                     return (
-                                        <Tag color={"warning"}>尽自己可见</Tag>
+                                        <>
+                                            <Tag color={"warning"}>尽自己可见</Tag>
+                                        </>
                                     )
                                 default:
                                     return (<></>)
@@ -100,6 +123,7 @@ const ArticleList = () => {
                         render: (node, record) => {
                             return (
                                 <div dangerouslySetInnerHTML={{__html: record.abstract}}>
+
                                 </div>
                             )
                         }

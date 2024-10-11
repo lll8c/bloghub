@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	rlock "github.com/gotomicro/redis-lock"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 )
@@ -13,4 +14,9 @@ func InitRedis() redis.Cmdable {
 
 func NewRatelimiter() redis.Limiter {
 	return nil
+}
+
+// InitRlockClient 分布式锁
+func InitRlockClient(client redis.Cmdable) *rlock.Client {
+	return rlock.NewClient(client)
 }

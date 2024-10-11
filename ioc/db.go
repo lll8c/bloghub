@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"fmt"
+	dao2 "geektime/webook/interactive/repository/dao"
 	"geektime/webook/internal/repository/dao"
 	logger2 "geektime/webook/pkg/logger"
 	"github.com/spf13/viper"
@@ -66,6 +67,10 @@ func InitDB(l logger2.LoggerV1) *gorm.DB {
 
 	//更新表结构
 	err = dao.InitTables(db)
+	if err != nil {
+		panic(err)
+	}
+	err = dao2.InitTables(db)
 	if err != nil {
 		panic(err)
 	}

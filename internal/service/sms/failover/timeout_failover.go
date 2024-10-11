@@ -23,7 +23,7 @@ func NewTimeoutFailoverSMSService(svcs []sms.Service, cnt int32) *TimeoutFailove
 	return &TimeoutFailoverSMSService{svcs: svcs, cnt: cnt}
 }
 
-func (t TimeoutFailoverSMSService) Send(ctx context.Context, args []string, numbers ...string) error {
+func (t TimeoutFailoverSMSService) Send(ctx context.Context, tpl string, args []string, numbers ...string) error {
 	idx := atomic.LoadInt32(&t.idx)
 	cnt := atomic.LoadInt32(&t.cnt)
 	//超时次数大于阈值，切换当前服务商
@@ -43,7 +43,7 @@ func (t TimeoutFailoverSMSService) Send(ctx context.Context, args []string, numb
 	}
 
 	svc := t.svcs[idx]
-	err := svc.Send(ctx, args, numbers...)
+	err := svc.Send(ctx, tpl, args, numbers...)
 	switch err {
 	case nil:
 		//正常发送了消息，连续超时次数置0
