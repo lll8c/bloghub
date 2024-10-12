@@ -32,8 +32,8 @@ var interactiveSvcSet = wire.NewSet(dao.NewGORMInteractiveDAO,
 	service.NewInteractiveService,
 )
 
-//不停机数据迁移后台管理服务端
-//源目数据库进行校验，pool进行双写
+// 不停机数据迁移后台管理服务端
+// 源目数据库进行校验，pool进行双写
 var migratorProvider = wire.NewSet(
 	ioc.InitInteractiveProducer,
 	ioc.InitMigratorWebServer,
@@ -44,6 +44,7 @@ func InitApp() *App {
 	wire.Build(
 		thirdPartySet, interactiveSvcSet,
 		//grpc服务端
+		ioc.InitEtcdClient,
 		grpc.NewInteractiveServiceServer,
 		ioc.InitGRPCxServer,
 		events.NewInteractiveReadEventConsumer,

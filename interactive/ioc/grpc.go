@@ -5,10 +5,11 @@ import (
 	"geektime/webook/pkg/grpcx"
 	"geektime/webook/pkg/logger"
 	"github.com/spf13/viper"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 )
 
-func InitGRPCxServer(intrServer *grpc2.InteractiveServiceServer, l logger.LoggerV1) *grpcx.Server {
+func InitGRPCxServer(intrServer *grpc2.InteractiveServiceServer, client *clientv3.Client, l logger.LoggerV1) *grpcx.Server {
 	type Config struct {
 		EtcdAddrs []string `yaml:"etcdAddrs"`
 		Port      int      `yaml:"port"`
@@ -29,5 +30,6 @@ func InitGRPCxServer(intrServer *grpc2.InteractiveServiceServer, l logger.Logger
 		EtcdAddrs: cfg.EtcdAddrs,
 		Name:      cfg.Name,
 		L:         l,
+		Client:    client,
 	}
 }

@@ -20,7 +20,7 @@ type Server struct {
 	L         logger.LoggerV1
 
 	kaCancel func()
-	client   *etcdv3.Client
+	Client   *etcdv3.Client
 }
 
 func (s *Server) ListenAndServe() error {
@@ -35,14 +35,7 @@ func (s *Server) ListenAndServe() error {
 }
 
 func (s *Server) Register() error {
-
-	cli, err := etcdv3.New(etcdv3.Config{
-		Endpoints: s.EtcdAddrs,
-	})
-	if err != nil {
-		return err
-	}
-	s.client = cli
+	cli := s.Client
 	em, err := endpoints.NewManager(cli, "service/"+s.Name)
 	addr := netx.GetOutboundIP() + ":" + strconv.Itoa(s.Port)
 	key := "service/" + s.Name + "/" + addr
@@ -78,9 +71,9 @@ func (s *Server) Close() error {
 	if s.kaCancel != nil {
 		s.kaCancel()
 	}
-	if s.client != nil {
+	if s.Client != nil {
 		// 依赖注入，你就不要关
-		return s.client.Close()
+		return s.Client.Close()
 	}
 	s.GracefulStop()
 	return nil
