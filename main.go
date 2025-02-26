@@ -1,0 +1,5 @@
+package bloghub
+
+func main() {
+
+}
